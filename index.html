@@ -134,10 +134,21 @@
         .modal-content {
             background: white;
             padding: 20px;
-            width: 550px;
+            width: 650px;
             border: 2px solid #000;
             max-height: 85vh;
             overflow-y: auto;
+        }
+        .log-box {
+            background: #fcfcfc;
+            padding: 8px;
+            font-size: 11px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         #autogen-screen {
             display: none;
@@ -171,20 +182,32 @@
         </div>
     </div>
 
+    <!-- 管理者パネル -->
     <div id="admin-modal">
         <div class="modal-content">
             <h3>管理者パネル</h3>
-            <h4 style="margin-bottom:5px;">🌐 アクセス情報</h4>
+            
+            <h4 style="margin-bottom:5px;">🌐 現在のアクセス環境・IP</h4>
             <div id="ip-info-box" style="background:#eee; padding:8px; font-size:12px; margin-bottom:15px; border:1px solid #ccc;">取得中...</div>
+            
             <h4 style="margin-bottom:5px;">📋 社員用パスワード管理</h4>
-            <div id="password-list-container" style="margin-bottom: 10px; max-height:150px; overflow-y:auto;"></div>
+            <div id="password-list-container" style="margin-bottom: 10px; max-height:120px; overflow-y:auto;"></div>
             <div style="margin-bottom: 15px; background: #fafafa; padding: 8px; border: 1px dashed #999;">
                 <input type="text" id="new-name-input" placeholder="社員名" style="width: 45%; padding: 4px;">
                 <input type="text" id="new-pass-input" placeholder="6桁パス" maxlength="6" style="width: 45%; padding: 4px;">
                 <br><button onclick="addPassword()" style="background: #2196F3; color: white; width: 100%; margin-top:5px; font-size:12px;">追加</button>
             </div>
-            <h4 style="margin-bottom:5px;">📁 操作履歴</h4>
-            <div id="staff-history-container" style="background:#fefefe; padding:8px; font-size:11px; max-height:120px; overflow-y:auto; border:1px solid #ccc; margin-bottom: 15px;">履歴なし</div>
+
+            <!-- ご要望のログエリア -->
+            <h4 style="margin-bottom:3px; color:#333;">🔑 ログインログ (誰が・いつ・どのパス・IP・場所・環境)</h4>
+            <div id="login-log-container" class="log-box">ログイン履歴なし</div>
+
+            <h4 style="margin-bottom:3px; color:#333;">✍️ 作成・変更ログ (誰が・何を・どのように作ったか)</h4>
+            <div id="creation-log-container" class="log-box">作成履歴なし</div>
+
+            <h4 style="margin-bottom:3px; color:#333;">📁 操作履歴（システム）</h4>
+            <div id="staff-history-container" class="log-box">履歴なし</div>
+
             <button onclick="closeAdminModal()" style="width: 100%; background: #ccc; padding: 6px;">閉じる</button>
         </div>
     </div>
@@ -246,7 +269,7 @@
             <b>ファイル操作:</b>
             <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
             <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
-                📂 ファイル読み込み (なんでもOK)
+                📂 ファイル読込 (多様な中身に対応)
                 <input type="file" id="file-loader" onchange="loadFromFile(event)">
             </label>
         </div>
@@ -289,16 +312,28 @@
 
         let allowedPasswords = JSON.parse(localStorage.getItem('allowedPasswords')) || initialPasswords;
         let staffHistory = JSON.parse(localStorage.getItem('staffHistory')) || [];
+        let loginLogs = JSON.parse(localStorage.getItem('loginLogs')) || [];
+        let creationLogs = JSON.parse(localStorage.getItem('creationLogs')) || [];
         let trainsData = JSON.parse(localStorage.getItem('trainsData')) || [];
 
         let clientIp = "取得中...";
+        let clientGeo = "取得中...";
         let currentLoggedInUser = "";
         let isAutoGenView = false;
 
-        fetch('https://api.ipify.org?format=json')
+        // IPと位置情報の取得
+        fetch('https://ipapi.co/json/')
             .then(res => res.json())
-            .then(data => { clientIp = data.ip; })
-            .catch(() => { clientIp = "ローカル"; });
+            .then(data => {
+                clientIp = data.ip || "不明";
+                clientGeo = `${data.city || '不明'}, ${data.region || ''}, ${data.country_name || ''} (ISP: ${data.org || '不明'})`;
+            })
+            .catch(() => {
+                fetch('https://api.ipify.org?format=json')
+                    .then(res => res.json())
+                    .then(data => { clientIp = data.ip; clientGeo = "ローカル/取得制限"; })
+                    .catch(() => { clientIp = "ローカル"; clientGeo = "不明"; });
+            });
 
         function checkPassword() {
             let val = document.getElementById('pass-input').value.trim();
@@ -307,6 +342,15 @@
                 currentLoggedInUser = matched.name;
                 document.getElementById('login-user-name').innerText = `(ログイン者: ${currentLoggedInUser})`;
                 document.getElementById('auth-screen').style.display = 'none';
+
+                // ログインログの記録（IP、場所、パスワード、ブラウザ環境）
+                let now = new Date().toLocaleString();
+                let userAgent = navigator.userAgent;
+                let logText = `[${now}] ユーザー: ${currentLoggedInUser} | パス: ${val} | IP: ${clientIp} | 場所: ${clientGeo} | 端末: ${userAgent}`;
+                loginLogs.unshift(logText);
+                if (loginLogs.length > 30) loginLogs.pop();
+                localStorage.setItem('loginLogs', JSON.stringify(loginLogs));
+
                 recordHistory(`ログイン成功 (${currentLoggedInUser})`);
             } else {
                 document.getElementById('auth-error').innerText = 'パスワードが違います';
@@ -333,6 +377,15 @@
             }
         }
         function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
+
+        function recordCreationLog(details) {
+            let now = new Date().toLocaleString();
+            let user = currentLoggedInUser || "未ログイン";
+            let logText = `[${now}] 担当者: ${user} | 内容: ${details}`;
+            creationLogs.unshift(logText);
+            if (creationLogs.length > 30) creationLogs.pop();
+            localStorage.setItem('creationLogs', JSON.stringify(creationLogs));
+        }
 
         function toggleAutoGenScreen() {
             isAutoGenView = !isAutoGenView;
@@ -373,7 +426,6 @@
                             </select>
                         </div>
                         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
-                            <!-- A駅側 -->
                             <div style="background:#f4f4f4; padding:6px; border:1px solid #ddd; flex:1; min-width:180px;">
                                 <div style="margin-bottom:4px;"><b>起点:</b> <input type="text" value="${s.stationA}" oninput="genStations[${idx}].stationA=this.value" style="width:70px; text-align:center;"></div>
                                 <div style="margin-bottom:4px; font-size:11px;">番線: <input type="text" value="${s.trackA}" oninput="genStations[${idx}].trackA=this.value" style="width:30px; text-align:center;">番線</div>
@@ -385,7 +437,6 @@
                                 <input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:40px; text-align:center;">秒
                             </div>
 
-                            <!-- B駅側 -->
                             <div style="background:#f4f4f4; padding:6px; border:1px solid #ddd; flex:1; min-width:180px;">
                                 <div style="margin-bottom:4px;"><b>終点:</b> <input type="text" value="${s.stationB}" oninput="genStations[${idx}].stationB=this.value" style="width:70px; text-align:center;"></div>
                                 <div style="margin-bottom:4px; font-size:11px;">番線: <input type="text" value="${s.trackB}" oninput="genStations[${idx}].trackB=this.value" style="width:30px; text-align:center;">番線</div>
@@ -424,6 +475,7 @@
             d.setAttribute("href", dataStr);
             d.setAttribute("download", "autogen_settings.json");
             d.click();
+            recordCreationLog("路線設定・自動作成条件を一括保存しました");
         }
 
         function loadGenSettings(event) {
@@ -440,6 +492,7 @@
                     document.getElementById('gen-turn-sec').value = obj.turnSec || "120";
                     genStations = obj.stations || genStations;
                     initGenStations();
+                    recordCreationLog(`路線設定ファイル「${file.name}」を読み込みました`);
                     alert("設定を読み込みました！");
                 } catch(err) { alert("読込失敗"); }
             };
@@ -524,6 +577,7 @@
 
             render();
             toggleAutoGenScreen();
+            recordCreationLog(`Webダイヤ自動作成を実行しました（編成数: ${trainCount}, 列車数合計: ${trainsData.length}本）`);
             alert(`Web計算完了！ 終了時間 (${endTimeStr}) に向けて折り返し運用ダイヤを自動作成しました。`);
         }
 
@@ -535,10 +589,13 @@
         }
 
         function renderAdminData() {
-            document.getElementById('ip-info-box').innerHTML = `IP: <b>${clientIp}</b>`;
+            document.getElementById('ip-info-box').innerHTML = `IP: <b>${clientIp}</b><br>推定場所/環境: ${clientGeo}`;
             let c = document.getElementById('password-list-container');
             c.innerHTML = allowedPasswords.map((item) => `<div style="font-size:11px; margin-bottom:2px;">[${item.name}] パス: ${item.pass}</div>`).join('');
-            document.getElementById('staff-history-container').innerHTML = staffHistory.join('<br>') || '履歴なし';
+            
+            document.getElementById('login-log-container').innerHTML = loginLogs.join('\n') || 'ログイン履歴なし';
+            document.getElementById('creation-log-container').innerHTML = creationLogs.join('\n') || '作成履歴なし';
+            document.getElementById('staff-history-container').innerHTML = staffHistory.join('\n') || '履歴なし';
         }
 
         function addPassword() {
@@ -556,23 +613,92 @@
             d.setAttribute("href", dataStr);
             d.setAttribute("download", "all_staff_data.json");
             d.click();
+            recordCreationLog("すべてのスタフデータをファイルに保存しました");
         }
 
         function loadFromFile(event) {
             let file = event.target.files[0];
             if (!file) return;
             let reader = new FileReader();
+            
             reader.onload = function(e) {
+                let content = e.target.result;
                 try {
-                    trainsData = JSON.parse(e.target.result);
+                    let parsed = JSON.parse(content);
+                    if (Array.isArray(parsed)) {
+                        trainsData = parsed.map(item => normalizeTrain(item));
+                    } else if (parsed && typeof parsed === 'object') {
+                        let possibleArray = parsed.trains || parsed.data || parsed.trainList || Object.values(parsed).find(v => Array.isArray(v));
+                        if (Array.isArray(possibleArray)) {
+                            trainsData = possibleArray.map(item => normalizeTrain(item));
+                        } else {
+                            trainsData = [normalizeTrain(parsed)];
+                        }
+                    }
                     render();
-                    alert("読み込み成功！");
-                } catch(err) { alert("読込失敗（JSON形式ではありません）"); }
+                    recordCreationLog(`ファイル「${file.name}」を読み込んでデータを再構築しました（列車数: ${trainsData.length}本）`);
+                    alert("ファイルを正常に読み込みました！");
+                } catch(jsonErr) {
+                    parsePlainTextFile(content, file.name);
+                }
             };
             reader.readAsText(file);
         }
 
-        function updateTrainNum(tIndex, val) { trainsData[tIndex].num = val; localStorage.setItem('trainsData', JSON.stringify(trainsData)); updatePreview(); }
+        function normalizeTrain(item) {
+            let num = item.num || item.trainNum || item.name || item.id || "列車";
+            let rawStations = item.stations || item.stationList || item.stops || [];
+            let stations = rawStations.map(st => ({
+                name: st.name || st.station || st.stationName || "",
+                arr: st.arr || st.arrival || st.arrive || "",
+                dep: st.dep || st.departure || st.depart || "",
+                handle: st.handle || st.type || st.action || "停車",
+                track: st.track || st.platform || st.line || ""
+            }));
+            return { num, stations };
+        }
+
+        function parsePlainTextFile(text, fileName) {
+            let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) {
+                alert("ファイルの中身が空か、有効なデータを抽出できませんでした。");
+                return;
+            }
+
+            let currentTrain = { num: fileName || "読込ファイル", stations: [] };
+            lines.forEach(line => {
+                let cols = line.split(/[,\t]/).map(s => s.trim());
+                if (cols.length >= 2) {
+                    currentTrain.stations.push({
+                        name: cols[0],
+                        arr: cols[1] || "",
+                        dep: cols[2] || cols[1] || "",
+                        handle: "停車",
+                        track: cols[3] || ""
+                    });
+                } else {
+                    currentTrain.stations.push({
+                        name: line,
+                        arr: "",
+                        dep: "",
+                        handle: "停車",
+                        track: ""
+                    });
+                }
+            });
+
+            trainsData = [currentTrain];
+            render();
+            recordCreationLog(`テキスト/非構造ファイル「${fileName}」を解析して読み込みました`);
+            alert("テキスト形式のファイルを解析して読み込みました！");
+        }
+
+        function updateTrainNum(tIndex, val) { 
+            trainsData[tIndex].num = val; 
+            localStorage.setItem('trainsData', JSON.stringify(trainsData)); 
+            updatePreview(); 
+            recordCreationLog(`列車 ${tIndex + 1} の列車番号を "${val}" に変更しました`);
+        }
 
         function updateData(tIndex, sIndex, field, val) {
             let st = trainsData[tIndex].stations[sIndex];
@@ -639,10 +765,26 @@
             updatePreview();
         }
 
-        function addTrain() { trainsData.push({num: "", stations: []}); render(); }
-        function removeTrain(i) { trainsData.splice(i, 1); render(); }
-        function addStation(t) { trainsData[t].stations.push({name:"", arr:"", dep:"", handle:"", track:""}); render(); }
-        function removeStation(t, s) { trainsData[t].stations.splice(s, 1); render(); }
+        function addTrain() { 
+            trainsData.push({num: "新列車", stations: []}); 
+            render(); 
+            recordCreationLog("新しい列車を追加しました");
+        }
+        function removeTrain(i) { 
+            trainsData.splice(i, 1); 
+            render(); 
+            recordCreationLog(`列車 ${i + 1} を削除しました`);
+        }
+        function addStation(t) { 
+            trainsData[t].stations.push({name:"", arr:"", dep:"", handle:"停車", track:""}); 
+            render(); 
+            recordCreationLog(`列車 ${t + 1} に駅を追加しました`);
+        }
+        function removeStation(t, s) { 
+            trainsData[t].stations.splice(s, 1); 
+            render(); 
+            recordCreationLog(`列車 ${t + 1} から駅を削除しました`);
+        }
 
         render();
     </script>
