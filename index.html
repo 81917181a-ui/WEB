@@ -219,7 +219,7 @@
         </div>
 
         <div style="background:#fafafa; padding:10px; border:1px solid #ccc; margin-bottom:15px;">
-            <h4 style="margin:0 0 5px 0;">区間・駅構造データ</h4>
+            <h4 style="margin:0 0 5px 0;">区間・駅構造データ（駅ごとの停車制限・番線指定）</h4>
             <div id="gen-stations-container"></div>
             <button onclick="addGenStationRow()" style="background:#ddd; font-size:11px; margin-top:5px;">＋ 駅を追加</button>
             <button onclick="removeGenStationRow()" style="background:#ff9999; font-size:11px; margin-top:5px; margin-left:5px;">✕ 駅を削除</button>
@@ -355,7 +355,7 @@
         }
 
         let genStations = JSON.parse(localStorage.getItem('genStations')) || [
-            { stationA: "A駅", faceA: "2", trackA: "2", sec: "60", stationB: "B駅", faceB: "2", trackB: "2", type: "複線", stopType: "普通" }
+            { stationA: "A駅", faceA: "2", trackA: "2", stopTypeA: "普通", sec: "60", stationB: "B駅", faceB: "2", trackB: "2", stopTypeB: "普通", type: "複線" }
         ];
 
         function initGenStations() {
@@ -364,27 +364,32 @@
             genStations.forEach((s, idx) => {
                 container.innerHTML += `
                     <div class="gen-section-card">
-                        <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px; flex-wrap:wrap;">
-                            <input type="text" value="${s.stationA}" oninput="genStations[${idx}].stationA=this.value" style="width:75px; text-align:center;" placeholder="A駅">
-                            <span>〜</span>
-                            <input type="text" value="${s.stationB}" oninput="genStations[${idx}].stationB=this.value" style="width:75px; text-align:center;" placeholder="B駅">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; font-weight:bold; border-bottom:1px solid #ccc; padding-bottom:3px;">
+                            <span>区間 ${idx + 1}</span>
+                            <select oninput="genStations[${idx}].type=this.value" style="font-size:11px;">
+                                <option ${s.type==='単線'?'selected':''}>単線</option>
+                                <option ${s.type==='複線'?'selected':''}>複線</option>
+                                <option ${s.type==='複々線'?'selected':''}>複々線</option>
+                            </select>
                         </div>
-                        <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px; flex-wrap:wrap;">
-                            <div><input type="text" value="${s.faceA}" oninput="genStations[${idx}].faceA=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackA}" oninput="genStations[${idx}].trackA=this.value" style="width:25px; text-align:center;">線</div>
-                            <span style="font-weight:bold;">[所要 <input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒]</span>
-                            <div><input type="text" value="${s.faceB}" oninput="genStations[${idx}].faceB=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackB}" oninput="genStations[${idx}].trackB=this.value" style="width:25px; text-align:center;">線</div>
-                        </div>
-                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <div>
-                                線路形態: 
-                                <select oninput="genStations[${idx}].type=this.value">
-                                    <option ${s.type==='単線'?'selected':''}>単線</option>
-                                    <option ${s.type==='複線'?'selected':''}>複線</option>
-                                    <option ${s.type==='複々線'?'selected':''}>複々線</option>
-                                </select>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+                            <!-- A駅側 -->
+                            <div style="background:#f4f4f4; padding:6px; border:1px solid #ddd; flex:1; min-width:180px;">
+                                <div style="margin-bottom:4px;"><b>起点:</b> <input type="text" value="${s.stationA}" oninput="genStations[${idx}].stationA=this.value" style="width:70px; text-align:center;"></div>
+                                <div style="margin-bottom:4px; font-size:11px;">番線: <input type="text" value="${s.trackA}" oninput="genStations[${idx}].trackA=this.value" style="width:30px; text-align:center;">番線</div>
+                                <div style="font-size:11px;">[${s.stationA || 'A駅'}の停車制限]:<br><input type="text" value="${s.stopTypeA || '普通'}" oninput="genStations[${idx}].stopTypeA=this.value" style="width:130px;" placeholder="普通, 快速など"></div>
                             </div>
-                            <div>
-                                停車種別制限: <input type="text" value="${s.stopType || '普通'}" oninput="genStations[${idx}].stopType=this.value" style="width:90px;" placeholder="普通, 快速 など">
+                            
+                            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; align-self:center;">
+                                <span style="font-weight:bold;">所要時間</span>
+                                <input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:40px; text-align:center;">秒
+                            </div>
+
+                            <!-- B駅側 -->
+                            <div style="background:#f4f4f4; padding:6px; border:1px solid #ddd; flex:1; min-width:180px;">
+                                <div style="margin-bottom:4px;"><b>終点:</b> <input type="text" value="${s.stationB}" oninput="genStations[${idx}].stationB=this.value" style="width:70px; text-align:center;"></div>
+                                <div style="margin-bottom:4px; font-size:11px;">番線: <input type="text" value="${s.trackB}" oninput="genStations[${idx}].trackB=this.value" style="width:30px; text-align:center;">番線</div>
+                                <div style="font-size:11px;">[${s.stationB || 'B駅'}の停車制限]:<br><input type="text" value="${s.stopTypeB || '普通'}" oninput="genStations[${idx}].stopTypeB=this.value" style="width:130px;" placeholder="普通, 快速など"></div>
                             </div>
                         </div>
                     </div>
@@ -397,7 +402,7 @@
                 alert("最大50駅まで追加可能です。");
                 return;
             }
-            genStations.push({ stationA: "駅", faceA: "2", trackA: "2", sec: "60", stationB: "駅", faceB: "2", trackB: "2", type: "複線", stopType: "普通" });
+            genStations.push({ stationA: "駅", faceA: "2", trackA: "2", stopTypeA: "普通", sec: "60", stationB: "駅", faceB: "2", trackB: "2", stopTypeB: "普通", type: "複線" });
             initGenStations();
         }
         function removeGenStationRow() {
@@ -445,7 +450,7 @@
             let trainCount = parseInt(document.getElementById('gen-train-count').value) || 1;
             let startTimeStr = document.getElementById('gen-start-time').value || "06:00";
             let endTimeStr = document.getElementById('gen-end-time').value || "23:00";
-            let stopSec = parseInt(document.getElementById('gen-stop-sec').value) || 30;
+            let baseStopSec = parseInt(document.getElementById('gen-stop-sec').value) || 30;
             let turnSec = parseInt(document.getElementById('gen-turn-sec').value) || 120;
 
             let typesList = document.getElementById('gen-types').value.split(',').map(s => s.trim()).filter(Boolean);
@@ -483,7 +488,7 @@
                         let runSec = parseInt(gs.sec) || 60;
                         let runMin = runSec / 60;
                         currentMin += runMin;
-                        currentMin += (stopSec / 60);
+                        currentMin += (baseStopSec / 60);
 
                         let th = Math.floor(currentMin / 60) % 24;
                         let tm = currentMin % 60;
@@ -491,9 +496,10 @@
 
                         let stName = isDirectionForward ? gs.stationB : gs.stationA;
                         let stTrack = isDirectionForward ? gs.trackB : gs.trackA;
+                        let stStopType = isDirectionForward ? (gs.stopTypeB || "普通") : (gs.stopTypeA || "普通");
 
                         let handleVal = "停車";
-                        let allowedStopTypes = (gs.stopType || "普通").split(',').map(s => s.trim());
+                        let allowedStopTypes = stStopType.split(',').map(s => s.trim());
                         if (!allowedStopTypes.includes(assignedType) && i < segmentCount - 1) {
                             handleVal = "通過";
                             timeStr = "レ";
@@ -624,7 +630,7 @@
                         <h4>列車 ${tIndex + 1}</h4>
                         <div style="margin-bottom: 5px; font-size:12px;">列車番号: <input type="text" value="${train.num}" style="width:120px;" oninput="updateTrainNum(${tIndex}, this.value)"></div>
                         ${stHtml}
-                        <button onclick="addStation(${tIndex})" style="background:#ddd; font-size:11px;">＋ 駅を追加</button>
+                        <button onclick="addStation(${tIndex})" style="background:#ddd; font-size:11px;">＋ 駅ごとに駅を追加</button>
                         <button onclick="removeTrain(${tIndex})" style="background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
                         <div style="clear:both;"></div>
                     </div>
