@@ -134,12 +134,11 @@
         .modal-content {
             background: white;
             padding: 20px;
-            width: 500px;
+            width: 550px;
             border: 2px solid #000;
             max-height: 85vh;
             overflow-y: auto;
         }
-        /* ダイヤ自動作成画面（切り替え用） */
         #autogen-screen {
             display: none;
             background: white;
@@ -147,6 +146,14 @@
             border: 2px solid #000;
             box-shadow: 3px 3px 5px rgba(0,0,0,0.2);
             margin-bottom: 20px;
+        }
+        /* 区間カードのスタイル */
+        .gen-section-card {
+            background: #fff;
+            border: 1px solid #999;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -171,7 +178,7 @@
             <h4 style="margin-bottom:5px;">🌐 アクセス情報</h4>
             <div id="ip-info-box" style="background:#eee; padding:8px; font-size:12px; margin-bottom:15px; border:1px solid #ccc;">取得中...</div>
             <h4 style="margin-bottom:5px;">📋 社員用パスワード管理</h4>
-            <div id="password-list-container" style="margin-bottom: 10px;"></div>
+            <div id="password-list-container" style="margin-bottom: 10px; max-height:150px; overflow-y:auto;"></div>
             <div style="margin-bottom: 15px; background: #fafafa; padding: 8px; border: 1px dashed #999;">
                 <input type="text" id="new-name-input" placeholder="社員名" style="width: 45%; padding: 4px;">
                 <input type="text" id="new-pass-input" placeholder="6桁パス" maxlength="6" style="width: 45%; padding: 4px;">
@@ -193,7 +200,7 @@
         </div>
     </div>
 
-    <!-- ダイヤ自動作成画面（切り替え表示エリア） -->
+    <!-- ダイヤ自動作成画面 -->
     <div id="autogen-screen">
         <h3>ダイヤ自動作成・路線設定</h3>
         <p style="font-size:12px; color:#666;">必要な情報を入力・設定してダイヤを自動作成します。</p>
@@ -261,6 +268,22 @@
             { name: "スタッフ01", pass: "834912" },
             { name: "スタッフ02", pass: "512064" },
             { name: "スタッフ03", pass: "948301" },
+            { name: "スタッフ04", pass: "275619" },
+            { name: "スタッフ05", pass: "630482" },
+            { name: "スタッフ06", pass: "192547" },
+            { name: "スタッフ07", pass: "481035" },
+            { name: "スタッフ08", pass: "709283" },
+            { name: "スタッフ09", pass: "356190" },
+            { name: "スタッフ10", pass: "824716" },
+            { name: "スタッフ11", pass: "503924" },
+            { name: "スタッフ12", pass: "168430" },
+            { name: "スタッフ13", pass: "912657" },
+            { name: "スタッフ14", pass: "247081" },
+            { name: "スタッフ15", pass: "685193" },
+            { name: "スタッフ16", pass: "309462" },
+            { name: "スタッフ17", pass: "741528" },
+            { name: "スタッフ18", pass: "528091" },
+            { name: "スタッフ19", pass: "193465" },
             { name: "管理者メイン", pass: "860247" }
         ];
 
@@ -312,7 +335,6 @@
         }
         function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
 
-        // 画面の切り替え処理
         function toggleAutoGenScreen() {
             isAutoGenView = !isAutoGenView;
             let autogenScreen = document.getElementById('autogen-screen');
@@ -334,8 +356,7 @@
         }
 
         let genStations = JSON.parse(localStorage.getItem('genStations')) || [
-            { name: "A駅", type: "複線", face: "2", track: "2", sec: "60" },
-            { name: "B駅", type: "複線", face: "2", track: "2", sec: "90" }
+            { stationA: "A駅", faceA: "2", trackA: "2", sec: "60", stationB: "B駅", faceB: "2", trackB: "2", type: "複線" }
         ];
 
         function initGenStations() {
@@ -343,19 +364,32 @@
             container.innerHTML = '';
             genStations.forEach((s, idx) => {
                 container.innerHTML += `
-                    <div style="font-size:11px; margin-bottom:5px; background:#eee; padding:5px; border:1px solid #ccc; display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-                        区間: <input type="text" value="${s.name}" oninput="genStations[${idx}].name=this.value" style="width:70px;" placeholder="駅名">
-                        線路: <select oninput="genStations[${idx}].type=this.value"><option ${s.type==='単線'?'selected':''}>単線</option><option ${s.type==='複線'?'selected':''}>複線</option><option ${s.type==='複々線'?'selected':''}>複々線</option></select>
-                        面:<input type="text" value="${s.face}" oninput="genStations[${idx}].face=this.value" style="width:25px; text-align:center;">面
-                        線:<input type="text" value="${s.track}" oninput="genStations[${idx}].track=this.value" style="width:25px; text-align:center;">線
-                        所要秒:<input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒
+                    <div class="gen-section-card">
+                        <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px; flex-wrap:wrap;">
+                            <input type="text" value="${s.stationA}" oninput="genStations[${idx}].stationA=this.value" style="width:75px; text-align:center;" placeholder="A駅">
+                            <span>〜</span>
+                            <input type="text" value="${s.stationB}" oninput="genStations[${idx}].stationB=this.value" style="width:75px; text-align:center;" placeholder="B駅">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px; flex-wrap:wrap;">
+                            <div><input type="text" value="${s.faceA}" oninput="genStations[${idx}].faceA=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackA}" oninput="genStations[${idx}].trackA=this.value" style="width:25px; text-align:center;">線</div>
+                            <span style="font-weight:bold;">[<input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒]</span>
+                            <div><input type="text" value="${s.faceB}" oninput="genStations[${idx}].faceB=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackB}" oninput="genStations[${idx}].trackB=this.value" style="width:25px; text-align:center;">線</div>
+                        </div>
+                        <div>
+                            線路形態: 
+                            <select oninput="genStations[${idx}].type=this.value">
+                                <option ${s.type==='単線'?'selected':''}>単線</option>
+                                <option ${s.type==='複線'?'selected':''}>複線</option>
+                                <option ${s.type==='複々線'?'selected':''}>複々線</option>
+                            </select>
+                        </div>
                     </div>
                 `;
             });
         }
 
         function addGenStationRow() {
-            genStations.push({ name: "新駅", type: "複線", face: "2", track: "2", sec: "60" });
+            genStations.push({ stationA: "B駅", faceA: "2", trackA: "2", sec: "60", stationB: "C駅", faceB: "2", trackB: "2", type: "複線" });
             initGenStations();
         }
         function removeGenStationRow() {
@@ -396,20 +430,18 @@
         }
 
         function executeAutoGenerate() {
-            let newStations = genStations.map((gs, i) => {
-                let timeStr = i === 0 ? "06:00" : "06:" + (i * 5 < 10 ? "0" + i * 5 : i * 5);
-                return {
-                    name: gs.name,
-                    arr: i === 0 ? "" : timeStr,
-                    dep: i === genStations.length - 1 ? "" : timeStr,
-                    handle: "停車",
-                    track: gs.track
-                };
+            let stationsList = [];
+            genStations.forEach((gs, i) => {
+                if (i === 0) {
+                    stationsList.push({ name: gs.stationA, arr: "", dep: "06:00", handle: "停車", track: gs.trackA });
+                }
+                let timeStr = "06:" + ((i + 1) * 5 < 10 ? "0" + (i + 1) * 5 : (i + 1) * 5);
+                stationsList.push({ name: gs.stationB, arr: timeStr, dep: timeStr, handle: "停車", track: gs.trackB });
             });
 
             trainsData.push({
                 num: "自動01",
-                stations: newStations
+                stations: stationsList
             });
 
             render();
@@ -427,7 +459,7 @@
         function renderAdminData() {
             document.getElementById('ip-info-box').innerHTML = `IP: <b>${clientIp}</b>`;
             let c = document.getElementById('password-list-container');
-            c.innerHTML = allowedPasswords.map((item, idx) => `<div>[${item.name}] パス: ${item.pass}</div>`).join('');
+            c.innerHTML = allowedPasswords.map((item) => `<div style="font-size:11px; margin-bottom:2px;">[${item.name}] パス: ${item.pass}</div>`).join('');
             document.getElementById('staff-history-container').innerHTML = staffHistory.join('<br>') || '履歴なし';
         }
 
