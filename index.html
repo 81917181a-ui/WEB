@@ -134,7 +134,7 @@
         .modal-content {
             background: white;
             padding: 20px;
-            width: 650px;
+            width: 700px;
             border: 2px solid #000;
             max-height: 85vh;
             overflow-y: auto;
@@ -190,22 +190,21 @@
             <h4 style="margin-bottom:5px;">🌐 現在のアクセス環境・IP</h4>
             <div id="ip-info-box" style="background:#eee; padding:8px; font-size:12px; margin-bottom:15px; border:1px solid #ccc;">取得中...</div>
             
-            <h4 style="margin-bottom:5px;">📋 社員用パスワード管理</h4>
-            <div id="password-list-container" style="margin-bottom: 10px; max-height:120px; overflow-y:auto;"></div>
+            <h4 style="margin-bottom:5px;">📋 社員用パスワード・ニックネーム管理（編集可能）</h4>
+            <div id="password-list-container" style="margin-bottom: 10px; max-height:150px; overflow-y:auto;"></div>
             <div style="margin-bottom: 15px; background: #fafafa; padding: 8px; border: 1px dashed #999;">
-                <input type="text" id="new-name-input" placeholder="社員名" style="width: 45%; padding: 4px;">
-                <input type="text" id="new-pass-input" placeholder="6桁パス" maxlength="6" style="width: 45%; padding: 4px;">
-                <br><button onclick="addPassword()" style="background: #2196F3; color: white; width: 100%; margin-top:5px; font-size:12px;">追加</button>
+                <input type="text" id="new-name-input" placeholder="社員名/ニックネーム" style="width: 42%; padding: 4px;">
+                <input type="text" id="new-pass-input" placeholder="6桁パス" maxlength="6" style="width: 42%; padding: 4px;">
+                <br><button onclick="addPassword()" style="background: #2196F3; color: white; width: 100%; margin-top:5px; font-size:12px;">新規追加</button>
             </div>
 
-            <!-- ご要望のログエリア -->
-            <h4 style="margin-bottom:3px; color:#333;">🔑 ログインログ (誰が・いつ・どのパス・IP・場所・環境)</h4>
+            <h4 style="margin-bottom:3px; color:#333;">🔑 ログインログ (誰が・どのパスで・IP・場所・環境)</h4>
             <div id="login-log-container" class="log-box">ログイン履歴なし</div>
 
-            <h4 style="margin-bottom:3px; color:#333;">✍️ 作成・変更ログ (誰が・何を・どのように作ったか)</h4>
+            <h4 style="margin-bottom:3px; color:#333;">✍️ 作成・変更ログ (誰が・どのパスで・何を編集したか)</h4>
             <div id="creation-log-container" class="log-box">作成履歴なし</div>
 
-            <h4 style="margin-bottom:3px; color:#333;">📁 操作履歴（システム）</h4>
+            <h4 style="margin-bottom:3px; color:#333;">📁 操作履歴（システム全般）</h4>
             <div id="staff-history-container" class="log-box">履歴なし</div>
 
             <button onclick="closeAdminModal()" style="width: 100%; background: #ccc; padding: 6px;">閉じる</button>
@@ -269,7 +268,7 @@
             <b>ファイル操作:</b>
             <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
             <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
-                📂 ファイル読込 (多様な中身に対応)
+                📂 ファイル読込 (JSON・OuDia対応)
                 <input type="file" id="file-loader" onchange="loadFromFile(event)">
             </label>
         </div>
@@ -319,6 +318,7 @@
         let clientIp = "取得中...";
         let clientGeo = "取得中...";
         let currentLoggedInUser = "";
+        let currentLoggedInPass = "";
         let isAutoGenView = false;
 
         // IPと位置情報の取得
@@ -340,13 +340,13 @@
             let matched = allowedPasswords.find(item => item.pass === val);
             if (matched) {
                 currentLoggedInUser = matched.name;
+                currentLoggedInPass = matched.pass;
                 document.getElementById('login-user-name').innerText = `(ログイン者: ${currentLoggedInUser})`;
                 document.getElementById('auth-screen').style.display = 'none';
 
-                // ログインログの記録（IP、場所、パスワード、ブラウザ環境）
                 let now = new Date().toLocaleString();
                 let userAgent = navigator.userAgent;
-                let logText = `[${now}] ユーザー: ${currentLoggedInUser} | パス: ${val} | IP: ${clientIp} | 場所: ${clientGeo} | 端末: ${userAgent}`;
+                let logText = `[${now}] ニックネーム: ${currentLoggedInUser} (パス: ${val}) | IP: ${clientIp} | 場所: ${clientGeo} | 端末: ${userAgent}`;
                 loginLogs.unshift(logText);
                 if (loginLogs.length > 30) loginLogs.pop();
                 localStorage.setItem('loginLogs', JSON.stringify(loginLogs));
@@ -359,6 +359,8 @@
 
         function logout() {
             recordHistory(`ログアウト (${currentLoggedInUser})`);
+            currentLoggedInUser = "";
+            currentLoggedInPass = "";
             document.getElementById('pass-input').value = '';
             document.getElementById('auth-error').innerText = '';
             document.getElementById('auth-screen').style.display = 'flex';
@@ -367,7 +369,8 @@
         function openAdminModalFromAuth() {
             let p = prompt("管理者用パスワードを入力してください");
             if (p === "1289") {
-                currentLoggedInUser = "管理者";
+                currentLoggedInUser = "管理者(特権)";
+                currentLoggedInPass = "1289";
                 document.getElementById('login-user-name').innerText = `(ログイン者: ${currentLoggedInUser})`;
                 document.getElementById('auth-screen').style.display = 'none';
                 renderAdminData();
@@ -381,7 +384,8 @@
         function recordCreationLog(details) {
             let now = new Date().toLocaleString();
             let user = currentLoggedInUser || "未ログイン";
-            let logText = `[${now}] 担当者: ${user} | 内容: ${details}`;
+            let passUsed = currentLoggedInPass ? `(パス: ${currentLoggedInPass})` : "";
+            let logText = `[${now}] 担当者: ${user} ${passUsed} | 内容: ${details}`;
             creationLogs.unshift(logText);
             if (creationLogs.length > 30) creationLogs.pop();
             localStorage.setItem('creationLogs', JSON.stringify(creationLogs));
@@ -583,7 +587,7 @@
 
         function recordHistory(action) {
             let now = new Date().toLocaleString();
-            staffHistory.unshift(`[${now}] ${currentLoggedInUser} - ${action}`);
+            staffHistory.unshift(`[${now}] ユーザー: ${currentLoggedInUser} - ${action}`);
             if (staffHistory.length > 20) staffHistory.pop();
             localStorage.setItem('staffHistory', JSON.stringify(staffHistory));
         }
@@ -591,7 +595,14 @@
         function renderAdminData() {
             document.getElementById('ip-info-box').innerHTML = `IP: <b>${clientIp}</b><br>推定場所/環境: ${clientGeo}`;
             let c = document.getElementById('password-list-container');
-            c.innerHTML = allowedPasswords.map((item) => `<div style="font-size:11px; margin-bottom:2px;">[${item.name}] パス: ${item.pass}</div>`).join('');
+            c.innerHTML = allowedPasswords.map((item, idx) => `
+                <div style="font-size:11px; margin-bottom:5px; display:flex; gap:5px; align-items:center;">
+                    <input type="text" id="edit-name-${idx}" value="${item.name}" style="width:120px; padding:2px;">
+                    <input type="text" id="edit-pass-${idx}" value="${item.pass}" style="width:90px; padding:2px;" maxlength="6">
+                    <button onclick="updatePasswordItem(${idx})" style="font-size:10px; background:#4CAF50; color:white; padding:2px 6px;">更新</button>
+                    <button onclick="deletePasswordItem(${idx})" style="font-size:10px; background:#f44336; color:white; padding:2px 6px;">削除</button>
+                </div>
+            `).join('');
             
             document.getElementById('login-log-container').innerHTML = loginLogs.join('\n') || 'ログイン履歴なし';
             document.getElementById('creation-log-container').innerHTML = creationLogs.join('\n') || '作成履歴なし';
@@ -605,6 +616,28 @@
             allowedPasswords.push({name, pass});
             localStorage.setItem('allowedPasswords', JSON.stringify(allowedPasswords));
             renderAdminData();
+        }
+
+        function updatePasswordItem(idx) {
+            let newName = document.getElementById(`edit-name-${idx}`).value.trim();
+            let newPass = document.getElementById(`edit-pass-${idx}`).value.trim();
+            if(!newName || !newPass) {
+                alert("名前とパスワードを入力してください");
+                return;
+            }
+            allowedPasswords[idx].name = newName;
+            allowedPasswords[idx].pass = newPass;
+            localStorage.setItem('allowedPasswords', JSON.stringify(allowedPasswords));
+            renderAdminData();
+            alert("パスワード・ニックネームを更新しました！");
+        }
+
+        function deletePasswordItem(idx) {
+            if(confirm("このパスワード項目を削除しますか？")) {
+                allowedPasswords.splice(idx, 1);
+                localStorage.setItem('allowedPasswords', JSON.stringify(allowedPasswords));
+                renderAdminData();
+            }
         }
 
         function saveToFile() {
@@ -636,10 +669,11 @@
                         }
                     }
                     render();
-                    recordCreationLog(`ファイル「${file.name}」を読み込んでデータを再構築しました（列車数: ${trainsData.length}本）`);
+                    recordCreationLog(`ファイル「${file.name}」をJSONとして読み込みました（列車数: ${trainsData.length}本）`);
                     alert("ファイルを正常に読み込みました！");
                 } catch(jsonErr) {
-                    parsePlainTextFile(content, file.name);
+                    // OuDia形式などの独自テキスト構造の解析を試みる
+                    parseCustomOrOuDiaFile(content, file.name);
                 }
             };
             reader.readAsText(file);
@@ -658,39 +692,72 @@
             return { num, stations };
         }
 
-        function parsePlainTextFile(text, fileName) {
+        // OuDia形式や一般的なテキスト形式をパースする関数
+        function parseCustomOrOuDiaFile(text, fileName) {
             let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
             if (lines.length === 0) {
                 alert("ファイルの中身が空か、有効なデータを抽出できませんでした。");
                 return;
             }
 
-            let currentTrain = { num: fileName || "読込ファイル", stations: [] };
+            // OuDiaの駅名抽出を試みる
+            let extractedStations = [];
+            let currentTrainName = fileName;
+            let currentTrainStations = [];
+
             lines.forEach(line => {
-                let cols = line.split(/[,\t]/).map(s => s.trim());
-                if (cols.length >= 2) {
-                    currentTrain.stations.push({
-                        name: cols[0],
-                        arr: cols[1] || "",
-                        dep: cols[2] || cols[1] || "",
-                        handle: "停車",
-                        track: cols[3] || ""
-                    });
-                } else {
-                    currentTrain.stations.push({
-                        name: line,
-                        arr: "",
-                        dep: "",
-                        handle: "停車",
-                        track: ""
-                    });
+                if (line.startsWith("Ekimei=")) {
+                    let sName = line.split("=")[1];
+                    if (sName) extractedStations.push(sName);
+                } else if (line.startsWith("Rosenmei=")) {
+                    currentTrainName = line.split("=")[1] || fileName;
+                } else if (line.startsWith("Ressyamei=") || line.startsWith("Ressyabangou=")) {
+                    let val = line.split("=")[1];
+                    if (val) currentTrainName = val;
                 }
             });
 
-            trainsData = [currentTrain];
-            render();
-            recordCreationLog(`テキスト/非構造ファイル「${fileName}」を解析して読み込みました`);
-            alert("テキスト形式のファイルを解析して読み込みました！");
+            if (extractedStations.length > 0) {
+                // 駅名リストが取れた場合、それをベースにした雛形列車データを構築
+                currentTrainStations = extractedStations.map(stName => ({
+                    name: stName,
+                    arr: "00:00",
+                    dep: "00:00",
+                    handle: "停車",
+                    track: "1"
+                }));
+                trainsData = [{ num: currentTrainName, stations: currentTrainStations }];
+                render();
+                recordCreationLog(`OuDia形式ファイル「${fileName}」を解析し、${extractedStations.length}駅の路線構造を読み込みました`);
+                alert(`OuDia形式ファイルを解析しました！ (${extractedStations.length}駅を検出)`);
+            } else {
+                // 通常のプレーンテキスト・CSV風ファイルのフォールバック
+                let currentTrain = { num: fileName, stations: [] };
+                lines.forEach(line => {
+                    let cols = line.split(/[,\t]/).map(s => s.trim());
+                    if (cols.length >= 2) {
+                        currentTrain.stations.push({
+                            name: cols[0],
+                            arr: cols[1] || "",
+                            dep: cols[2] || cols[1] || "",
+                            handle: "停車",
+                            track: cols[3] || ""
+                        });
+                    } else {
+                        currentTrain.stations.push({
+                            name: line,
+                            arr: "",
+                            dep: "",
+                            handle: "停車",
+                            track: ""
+                        });
+                    }
+                });
+                trainsData = [currentTrain];
+                render();
+                recordCreationLog(`テキスト形式ファイル「${fileName}」を解析して読み込みました`);
+                alert("テキスト形式のファイルを解析して読み込みました！");
+            }
         }
 
         function updateTrainNum(tIndex, val) { 
