@@ -230,7 +230,7 @@
             <button onclick="saveGenSettings()" style="background:#4CAF50; color:white; font-size:11px; margin-left:10px; padding:5px 10px;">全部保存</button>
             <label style="cursor:pointer; background:#607D8B; color:white; padding:5px 10px; font-size:11px; display:inline-block; margin-left:5px; font-weight:bold;">
                 全部読み込み
-                <input type="file" accept=".json" style="display:none;" onchange="loadGenSettings(event)">
+                <input type="file" onchange="loadGenSettings(event)">
             </label>
         </div>
 
@@ -246,8 +246,8 @@
             <b>ファイル操作:</b>
             <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
             <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
-                📂 スタフ/Oudia読み込み (.json/.oud)
-                <input type="file" id="file-loader" accept=".json,.oud" style="display: none;" onchange="loadFromFile(event)">
+                📂 ファイル読み込み (なんでもOK)
+                <input type="file" id="file-loader" onchange="loadFromFile(event)">
             </label>
         </div>
 
@@ -567,7 +567,7 @@
                     trainsData = JSON.parse(e.target.result);
                     render();
                     alert("読み込み成功！");
-                } catch(err) { alert("読込失敗"); }
+                } catch(err) { alert("読込失敗（JSON形式ではありません）"); }
             };
             reader.readAsText(file);
         }
@@ -630,7 +630,7 @@
                         <h4>列車 ${tIndex + 1}</h4>
                         <div style="margin-bottom: 5px; font-size:12px;">列車番号: <input type="text" value="${train.num}" style="width:120px;" oninput="updateTrainNum(${tIndex}, this.value)"></div>
                         ${stHtml}
-                        <button onclick="addStation(${tIndex})" style="background:#ddd; font-size:11px;">＋ 駅ごとに駅を追加</button>
+                        <button onclick="addStation(${tIndex})" style="background:#ddd; font-size:11px;">＋ 駅を追加</button>
                         <button onclick="removeTrain(${tIndex})" style="background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
                         <div style="clear:both;"></div>
                     </div>
