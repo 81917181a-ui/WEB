@@ -190,9 +190,9 @@
 
     <div style="margin-bottom: 15px; background: #ddd; padding: 10px; border: 1px solid #999;">
         <b>ファイル操作:</b>
-        <button onclick="saveToFile()" style="background: #607D8B; color: white; margin-left: 10px;">💾 全データ保存</button>
-        <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 5px 10px; display: inline-block; font-weight: bold;">
-            📂 全データ読み込み
+        <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
+        <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
+            📂 スタフをすべて読み込み
             <input type="file" id="file-loader" accept=".json" style="display: none;" onchange="loadFromFile(event)">
         </label>
     </div>
@@ -244,15 +244,12 @@
             .then(data => { clientIp = data.ip; })
             .catch(() => { clientIp = "IP取得失敗 (ローカル等)"; });
 
+        // 初期データを空っぽ（またはシンプルな未設定状態）に変更
         let trainsData = JSON.parse(localStorage.getItem('trainsData')) || [
             {
-                num1: "普通",
-                num2: "1201",
-                stations: [
-                    { name: "終わり", arr: "", dep: "619", handle: "停車", track: "1番線" },
-                    { name: "終わり東", arr: "レ", dep: "レ", handle: "通過", track: "1番線" },
-                    { name: "終わり三丁目", arr: "632", dep: "633", handle: "停車", track: "1番線" }
-                ]
+                num1: "",
+                num2: "",
+                stations: []
             }
         ];
 
@@ -359,11 +356,11 @@
         }
 
         function saveToFile() {
-            recordHistory("全データをファイルに保存");
+            recordHistory("すべてのスタフデータをファイルに保存");
             let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(trainsData, null, 2));
             let downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "dia_data.json");
+            downloadAnchor.setAttribute("download", "all_staff_data.json");
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
@@ -377,7 +374,7 @@
                 try {
                     trainsData = JSON.parse(e.target.result);
                     render();
-                    recordHistory("ファイルからデータを読み込み");
+                    recordHistory("ファイルからすべてのスタフデータを読み込み");
                     alert("ファイルを正常に読み込みました！");
                 } catch(err) {
                     alert("ファイルの読み込みに失敗しました。");
@@ -386,63 +383,23 @@
             reader.readAsText(file);
         }
 
-        // 個別スタフ保存用（テキストまたは画像っぽく保存、今回はJSON形式で個別列車を出力）
-        function saveSingleStaff(tIndex) {
-            let train = trainsData[tIndex];
-            let filename = `staff_${train.num1}_${train.num2}.json`;
-            recordHistory(`スタフ保存 (${train.num1} ${train.num2})`);
-            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(train, null, 2));
-            let downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", filename);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+        function updateTrainInfo(tIndex, field, value) {
+            trainsData[tIndex][field] = value;
+            localStorage.setItem('trainsData', JSON.stringify(trainsData));
+            updatePreview();
         }
 
-        function render() {
+        function updateData(tIndex, sIndex, field, value) {
+            trainsData[tIndex].stations[sIndex][field] = value;
             localStorage.setItem('trainsData', JSON.stringify(trainsData));
+            updatePreview();
+        }
 
-            const inputContainer = document.getElementById('trains-input-container');
+        function updatePreview() {
             const previewContainer = document.getElementById('staff-preview-container');
-            
-            inputContainer.innerHTML = '';
             previewContainer.innerHTML = '';
 
-            trainsData.forEach((train, tIndex) => {
-                let trainDiv = document.createElement('div');
-                trainDiv.className = 'train-form';
-                
-                let stationsHtml = '';
-                train.stations.forEach((st, sIndex) => {
-                    stationsHtml += `
-                        <div class="station-row">
-                            <input type="text" class="name" placeholder="駅名" value="${st.name}" oninput="updateData(${tIndex}, ${sIndex}, 'name', this.value)">
-                            <input type="text" class="time" placeholder="着" value="${st.arr}" oninput="updateData(${tIndex}, ${sIndex}, 'arr', this.value)">
-                            <input type="text" class="time" placeholder="発" value="${st.dep}" oninput="updateData(${tIndex}, ${sIndex}, 'dep', this.value)">
-                            <input type="text" class="hnd" placeholder="扱" value="${st.handle}" oninput="updateData(${tIndex}, ${sIndex}, 'handle', this.value)">
-                            <input type="text" class="trk" placeholder="番線" value="${st.track}" oninput="updateData(${tIndex}, ${sIndex}, 'track', this.value)">
-                            <button onclick="removeStation(${tIndex}, ${sIndex})" style="background:#ff9999; border:none; padding:2px 4px; font-size:10px;">✕</button>
-                        </div>
-                    `;
-                });
-
-                trainDiv.innerHTML = `
-                    <h4>列車 ${tIndex + 1}</h4>
-                    <div style="margin-bottom: 5px; font-size:12px;">
-                        列車番号1: <input type="text" value="${train.num1}" style="width:55px;" oninput="updateTrainInfo(${tIndex}, 'num1', this.value)">
-                        列車番号2: <input type="text" value="${train.num2}" style="width:55px;" oninput="updateTrainInfo(${tIndex}, 'num2', this.value)">
-                    </div>
-                    <div style="font-size:12px; font-weight:bold; margin-top:5px;">駅・時刻 (無限追加可能):</div>
-                    ${stationsHtml}
-                    <button onclick="addStation(${tIndex})" style="margin-top:5px; background:#ddd; font-size:11px;">＋ 駅を追加</button>
-                    <button onclick="duplicateTrain(${tIndex})" style="margin-top:5px; background:#2196F3; color:white; font-size:11px; margin-left:3px;">📋 列車を複製</button>
-                    <button onclick="saveSingleStaff(${tIndex})" style="margin-top:5px; background:#607D8B; color:white; font-size:11px; margin-left:3px;">💾 スタフ保存</button>
-                    <button onclick="removeTrain(${tIndex})" style="margin-top:5px; background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
-                    <div style="clear:both;"></div>
-                `;
-                inputContainer.appendChild(trainDiv);
-
+            trainsData.forEach((train) => {
                 let cardDiv = document.createElement('div');
                 cardDiv.className = 'staff-card';
                 
@@ -484,26 +441,54 @@
             });
         }
 
-        function updateTrainInfo(tIndex, field, value) {
-            trainsData[tIndex][field] = value;
+        function render() {
             localStorage.setItem('trainsData', JSON.stringify(trainsData));
-            render();
-        }
 
-        function updateData(tIndex, sIndex, field, value) {
-            trainsData[tIndex].stations[sIndex][field] = value;
-            localStorage.setItem('trainsData', JSON.stringify(trainsData));
-            render();
+            const inputContainer = document.getElementById('trains-input-container');
+            inputContainer.innerHTML = '';
+
+            trainsData.forEach((train, tIndex) => {
+                let trainDiv = document.createElement('div');
+                trainDiv.className = 'train-form';
+                
+                let stationsHtml = '';
+                train.stations.forEach((st, sIndex) => {
+                    stationsHtml += `
+                        <div class="station-row">
+                            <input type="text" class="name" placeholder="駅名" value="${st.name}" oninput="updateData(${tIndex}, ${sIndex}, 'name', this.value)">
+                            <input type="text" class="time" placeholder="着" value="${st.arr}" oninput="updateData(${tIndex}, ${sIndex}, 'arr', this.value)">
+                            <input type="text" class="time" placeholder="発" value="${st.dep}" oninput="updateData(${tIndex}, ${sIndex}, 'dep', this.value)">
+                            <input type="text" class="hnd" placeholder="扱" value="${st.handle}" oninput="updateData(${tIndex}, ${sIndex}, 'handle', this.value)">
+                            <input type="text" class="trk" placeholder="番線" value="${st.track}" oninput="updateData(${tIndex}, ${sIndex}, 'track', this.value)">
+                            <button onclick="removeStation(${tIndex}, ${sIndex})" style="background:#ff9999; border:none; padding:2px 4px; font-size:10px;">✕</button>
+                        </div>
+                    `;
+                });
+
+                trainDiv.innerHTML = `
+                    <h4>列車 ${tIndex + 1}</h4>
+                    <div style="margin-bottom: 5px; font-size:12px;">
+                        列車番号1: <input type="text" value="${train.num1}" style="width:55px;" oninput="updateTrainInfo(${tIndex}, 'num1', this.value)">
+                        列車番号2: <input type="text" value="${train.num2}" style="width:55px;" oninput="updateTrainInfo(${tIndex}, 'num2', this.value)">
+                    </div>
+                    <div style="font-size:12px; font-weight:bold; margin-top:5px;">駅・時刻 (無限追加可能):</div>
+                    ${stationsHtml}
+                    <button onclick="addStation(${tIndex})" style="margin-top:5px; background:#ddd; font-size:11px;">＋ 駅を追加</button>
+                    <button onclick="duplicateTrain(${tIndex})" style="margin-top:5px; background:#2196F3; color:white; font-size:11px; margin-left:3px;">📋 列車を複製</button>
+                    <button onclick="removeTrain(${tIndex})" style="margin-top:5px; background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
+                    <div style="clear:both;"></div>
+                `;
+                inputContainer.appendChild(trainDiv);
+            });
+
+            updatePreview();
         }
 
         function addTrain() {
             trainsData.push({
-                num1: "回送",
-                num2: "99" + (trainsData.length + 1),
-                stations: [
-                    { name: "始発", arr: "", dep: "0000", handle: "停車", track: "1番線" },
-                    { name: "終着", arr: "0010", dep: "", handle: "停車", track: "1番線" }
-                ]
+                num1: "",
+                num2: "",
+                stations: []
             });
             recordHistory("列車を追加");
             render();
@@ -526,7 +511,7 @@
         }
 
         function addStation(tIndex) {
-            trainsData[tIndex].stations.push({ name: "駅名", arr: "", dep: "", handle: "停車", track: "1番線" });
+            trainsData[tIndex].stations.push({ name: "", arr: "", dep: "", handle: "", track: "" });
             recordHistory("駅を追加");
             render();
         }
