@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">鉄道スタフ作成ツール</title>
+    <title>鉄道スタフ作成ツール</title>
     <style>
         body {
             font-family: monospace;
@@ -139,6 +139,15 @@
             max-height: 85vh;
             overflow-y: auto;
         }
+        /* ダイヤ自動作成画面（切り替え用） */
+        #autogen-screen {
+            display: none;
+            background: white;
+            padding: 20px;
+            border: 2px solid #000;
+            box-shadow: 3px 3px 5px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -159,60 +168,92 @@
     <div id="admin-modal">
         <div class="modal-content">
             <h3>管理者パネル</h3>
-            
-            <h4 style="margin-bottom:5px;">🌐 機械側で特定したアクセス情報</h4>
-            <div id="ip-info-box" style="background:#eee; padding:8px; font-size:12px; margin-bottom:15px; border:1px solid #ccc;">
-                自動取得中...
-            </div>
-
+            <h4 style="margin-bottom:5px;">🌐 アクセス情報</h4>
+            <div id="ip-info-box" style="background:#eee; padding:8px; font-size:12px; margin-bottom:15px; border:1px solid #ccc;">取得中...</div>
             <h4 style="margin-bottom:5px;">📋 社員用パスワード管理</h4>
             <div id="password-list-container" style="margin-bottom: 10px;"></div>
             <div style="margin-bottom: 15px; background: #fafafa; padding: 8px; border: 1px dashed #999;">
-                <input type="text" id="new-name-input" placeholder="社員名/ニックネーム" style="width: 45%; padding: 4px; margin-bottom: 4px;">
-                <input type="text" id="new-pass-input" placeholder="6桁のパスワード" maxlength="6" style="width: 45%; padding: 4px; margin-bottom: 4px;">
-                <br>
-                <button onclick="addPassword()" style="background: #2196F3; color: white; width: 100%; padding: 5px; font-size:12px;">社員用パスワードを追加</button>
+                <input type="text" id="new-name-input" placeholder="社員名" style="width: 45%; padding: 4px;">
+                <input type="text" id="new-pass-input" placeholder="6桁パス" maxlength="6" style="width: 45%; padding: 4px;">
+                <br><button onclick="addPassword()" style="background: #2196F3; color: white; width: 100%; margin-top:5px; font-size:12px;">追加</button>
             </div>
-
-            <h4 style="margin-bottom:5px;">📁 操作履歴・アクセスログ</h4>
-            <div id="staff-history-container" style="background:#fefefe; padding:8px; font-size:11px; max-height:160px; overflow-y:auto; border:1px solid #ccc; margin-bottom: 15px;">
-                履歴はありません
-            </div>
-            
+            <h4 style="margin-bottom:5px;">📁 操作履歴</h4>
+            <div id="staff-history-container" style="background:#fefefe; padding:8px; font-size:11px; max-height:120px; overflow-y:auto; border:1px solid #ccc; margin-bottom: 15px;">履歴なし</div>
             <button onclick="closeAdminModal()" style="width: 100%; background: #ccc; padding: 6px;">閉じる</button>
         </div>
     </div>
 
     <div class="top-bar">
         <div>
-            <h2 id="app-title-display" style="display:inline; margin:0;">鉄道スタフ作成ツール</h2>
-            <span id="login-user-name" style="color:#2196F3; font-size:14px; margin-left:10px;"></span>
+            <h2>鉄道スタフ作成ツール <span id="login-user-name" style="color:#2196F3; font-size:14px; font-weight:normal; margin-left:10px;"></span></h2>
         </div>
         <div style="display: flex; gap: 5px; align-items: center;">
-            <input type="text" id="site-title-input" placeholder="Web名を変更" style="padding:4px; font-size:12px; width:120px;">
-            <button onclick="changeSiteTitle()" style="background:#ff9800; color:white; font-size:11px; padding:5px;">Web名変更</button>
+            <button id="nav-autogen-btn" onclick="toggleAutoGenScreen()" style="background:#ff9800; color:white;">ダイヤ自動作成</button>
             <button onclick="logout()" style="background: #f44336; color: white;">ログアウト</button>
         </div>
     </div>
 
-    <div style="margin-bottom: 15px; background: #ddd; padding: 10px; border: 1px solid #999;">
-        <b>ファイル操作:</b>
-        <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
-        <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
-            📂 スタフ/Oudia読み込み (.json/.oud)
-            <input type="file" id="file-loader" accept=".json,.oud" style="display: none;" onchange="loadFromFile(event)">
-        </label>
-    </div>
+    <!-- ダイヤ自動作成画面（切り替え表示エリア） -->
+    <div id="autogen-screen">
+        <h3>ダイヤ自動作成・路線設定</h3>
+        <p style="font-size:12px; color:#666;">必要な情報を入力・設定してダイヤを自動作成します。</p>
 
-    <div class="container">
-        <div class="control-panel">
-            <h3>ダイヤ・スタフ編集 (無限追加可能)</h3>
-            <button onclick="addTrain()" style="background: #4CAF50; color: white; width: 100%; margin-bottom: 15px; padding: 8px;">＋ 新しい列車を追加</button>
+        <div style="background:#fafafa; padding:10px; border:1px solid #ccc; margin-bottom:15px;">
+            <h4 style="margin:0 0 5px 0;">基本運行条件</h4>
+            <label style="font-size:12px;">種別一覧 (逆順: 普通〜特急等):</label><br>
+            <textarea id="gen-types" style="width:100%; height:40px; font-family:monospace;" placeholder="普通, 快速, 急行, 特急">普通, 快速, 急行, 特急</textarea><br>
             
-            <div id="trains-input-container"></div>
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+                <div><label style="font-size:12px;">開始時刻:</label><br><input type="text" id="gen-start-time" value="06:00" style="width:90px;"></div>
+                <div><label style="font-size:12px;">終了時刻:</label><br><input type="text" id="gen-end-time" value="23:00" style="width:90px;"></div>
+                <div><label style="font-size:12px;">始発駅(任意):</label><br><input type="text" id="gen-start-station" placeholder="例: A駅" style="width:110px;"></div>
+                <div><label style="font-size:12px;">終了駅(任意):</label><br><input type="text" id="gen-end-station" placeholder="例: Z駅" style="width:110px;"></div>
+            </div>
         </div>
 
-        <div class="staff-cards-area" id="staff-preview-container"></div>
+        <div style="background:#fafafa; padding:10px; border:1px solid #ccc; margin-bottom:15px;">
+            <h4 style="margin:0 0 5px 0;">区間・駅構造データ</h4>
+            <div id="gen-stations-container"></div>
+            <button onclick="addGenStationRow()" style="background:#ddd; font-size:11px; margin-top:5px;">＋ 駅を追加</button>
+            <button onclick="removeGenStationRow()" style="background:#ff9999; font-size:11px; margin-top:5px; margin-left:5px;">✕ 駅を削除</button>
+        </div>
+
+        <div style="margin-bottom: 15px; background: #e8f4fd; padding: 10px; border: 1px solid #bbe2ff; font-size:12px;">
+            <b>データ一括保存・読込:</b>
+            <button onclick="saveGenSettings()" style="background:#4CAF50; color:white; font-size:11px; margin-left:10px; padding:5px 10px;">全部保存</button>
+            <label style="cursor:pointer; background:#607D8B; color:white; padding:5px 10px; font-size:11px; display:inline-block; margin-left:5px; font-weight:bold;">
+                全部読み込み
+                <input type="file" accept=".json" style="display:none;" onchange="loadGenSettings(event)">
+            </label>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button onclick="executeAutoGenerate()" style="background:#2196F3; color:white; padding:8px 15px;">🚀 ダイヤ自動作成を実行してスタフに反映</button>
+            <button onclick="toggleAutoGenScreen()" style="background: #ccc; padding: 8px 15px;">スタフ編集画面に戻る</button>
+        </div>
+    </div>
+
+    <!-- 通常のファイル操作・編集画面 -->
+    <div id="main-editor-area">
+        <div style="margin-bottom: 15px; background: #ddd; padding: 10px; border: 1px solid #999;">
+            <b>ファイル操作:</b>
+            <button onclick="saveToFile()" style="background: #4CAF50; color: white; margin-left: 10px; font-size: 14px; padding: 6px 12px;">💾 スタフをすべて保存</button>
+            <label style="margin-left: 10px; cursor: pointer; background: #607D8B; color: white; padding: 6px 12px; display: inline-block; font-weight: bold; font-size: 14px;">
+                📂 スタフ/Oudia読み込み (.json/.oud)
+                <input type="file" id="file-loader" accept=".json,.oud" style="display: none;" onchange="loadFromFile(event)">
+            </label>
+        </div>
+
+        <div class="container">
+            <div class="control-panel">
+                <h3>ダイヤ・スタフ編集 (無限追加可能)</h3>
+                <button onclick="addTrain()" style="background: #4CAF50; color: white; width: 100%; margin-bottom: 15px; padding: 8px;">＋ 新しい列車を追加</button>
+                
+                <div id="trains-input-container"></div>
+            </div>
+
+            <div class="staff-cards-area" id="staff-preview-container"></div>
+        </div>
     </div>
 
     <script>
@@ -220,59 +261,26 @@
             { name: "スタッフ01", pass: "834912" },
             { name: "スタッフ02", pass: "512064" },
             { name: "スタッフ03", pass: "948301" },
-            { name: "スタッフ04", pass: "275619" },
-            { name: "スタッフ05", pass: "630482" },
-            { name: "スタッフ06", pass: "192547" },
-            { name: "スタッフ07", pass: "481035" },
-            { name: "スタッフ08", pass: "709283" },
-            { name: "スタッフ09", pass: "356190" },
-            { name: "スタッフ10", pass: "824716" },
-            { name: "スタッフ11", pass: "503924" },
-            { name: "スタッフ12", pass: "168430" },
-            { name: "スタッフ13", pass: "912657" },
-            { name: "スタッフ14", pass: "247081" },
-            { name: "スタッフ15", pass: "685193" },
-            { name: "スタッフ16", pass: "309462" },
-            { name: "スタッフ17", pass: "741528" },
-            { name: "スタッフ18", pass: "528091" },
-            { name: "スタッフ19", pass: "193465" },
             { name: "管理者メイン", pass: "860247" }
         ];
 
         let allowedPasswords = JSON.parse(localStorage.getItem('allowedPasswords')) || initialPasswords;
         let staffHistory = JSON.parse(localStorage.getItem('staffHistory')) || [];
-        let customSiteTitle = localStorage.getItem('customSiteTitle') || "鉄道スタフ作成ツール";
-
-        document.getElementById('app-title-display').innerText = customSiteTitle;
-        document.getElementById('page-title').innerText = customSiteTitle;
-        document.getElementById('site-title-input').value = customSiteTitle;
-
-        function changeSiteTitle() {
-            let newTitle = document.getElementById('site-title-input').value.trim();
-            if (!newTitle) return;
-            customSiteTitle = newTitle;
-            localStorage.setItem('customSiteTitle', customSiteTitle);
-            document.getElementById('app-title-display').innerText = customSiteTitle;
-            document.getElementById('page-title').innerText = customSiteTitle;
-            recordHistory(`Webリンク名を「${customSiteTitle}」に変更`);
-            alert("Webリンク名（タイトル）を変更しました！");
-        }
+        let trainsData = JSON.parse(localStorage.getItem('trainsData')) || [];
 
         let clientIp = "取得中...";
         let clientDevice = navigator.userAgent;
         let currentLoggedInUser = "";
+        let isAutoGenView = false;
 
         fetch('https://api.ipify.org?format=json')
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => { clientIp = data.ip; })
-            .catch(() => { clientIp = "IP取得失敗 (ローカル等)"; });
-
-        let trainsData = JSON.parse(localStorage.getItem('trainsData')) || [];
+            .catch(() => { clientIp = "ローカル"; });
 
         function checkPassword() {
             let val = document.getElementById('pass-input').value.trim();
             let matched = allowedPasswords.find(item => item.pass === val);
-
             if (matched) {
                 currentLoggedInUser = matched.name;
                 document.getElementById('login-user-name').innerText = `(ログイン者: ${currentLoggedInUser})`;
@@ -293,177 +301,178 @@
         function openAdminModalFromAuth() {
             let p = prompt("管理者用パスワードを入力してください");
             if (p === "1289") {
-                currentLoggedInUser = "管理者パネル経由";
+                currentLoggedInUser = "管理者";
                 document.getElementById('login-user-name').innerText = `(ログイン者: ${currentLoggedInUser})`;
                 document.getElementById('auth-screen').style.display = 'none';
-                
                 renderAdminData();
                 document.getElementById('admin-modal').style.display = 'flex';
-                recordHistory("管理者パネルを開き、ログイン完了");
             } else if (p !== null) {
                 alert("パスワードが違います");
             }
         }
+        function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
 
-        function closeAdminModal() {
-            document.getElementById('admin-modal').style.display = 'none';
+        // 画面の切り替え処理
+        function toggleAutoGenScreen() {
+            isAutoGenView = !isAutoGenView;
+            let autogenScreen = document.getElementById('autogen-screen');
+            let mainEditor = document.getElementById('main-editor-area');
+            let btn = document.getElementById('nav-autogen-btn');
+
+            if (isAutoGenView) {
+                autogenScreen.style.display = 'block';
+                mainEditor.style.display = 'none';
+                btn.innerText = 'スタフ編集に戻る';
+                btn.style.background = '#607D8B';
+                initGenStations();
+            } else {
+                autogenScreen.style.display = 'none';
+                mainEditor.style.display = 'block';
+                btn.innerText = 'ダイヤ自動作成';
+                btn.style.background = '#ff9800';
+            }
         }
 
-        function recordHistory(actionType) {
+        let genStations = JSON.parse(localStorage.getItem('genStations')) || [
+            { name: "A駅", type: "複線", face: "2", track: "2", sec: "60" },
+            { name: "B駅", type: "複線", face: "2", track: "2", sec: "90" }
+        ];
+
+        function initGenStations() {
+            let container = document.getElementById('gen-stations-container');
+            container.innerHTML = '';
+            genStations.forEach((s, idx) => {
+                container.innerHTML += `
+                    <div style="font-size:11px; margin-bottom:5px; background:#eee; padding:5px; border:1px solid #ccc; display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                        区間: <input type="text" value="${s.name}" oninput="genStations[${idx}].name=this.value" style="width:70px;" placeholder="駅名">
+                        線路: <select oninput="genStations[${idx}].type=this.value"><option ${s.type==='単線'?'selected':''}>単線</option><option ${s.type==='複線'?'selected':''}>複線</option><option ${s.type==='複々線'?'selected':''}>複々線</option></select>
+                        面:<input type="text" value="${s.face}" oninput="genStations[${idx}].face=this.value" style="width:25px; text-align:center;">面
+                        線:<input type="text" value="${s.track}" oninput="genStations[${idx}].track=this.value" style="width:25px; text-align:center;">線
+                        所要秒:<input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒
+                    </div>
+                `;
+            });
+        }
+
+        function addGenStationRow() {
+            genStations.push({ name: "新駅", type: "複線", face: "2", track: "2", sec: "60" });
+            initGenStations();
+        }
+        function removeGenStationRow() {
+            genStations.pop();
+            initGenStations();
+        }
+
+        function saveGenSettings() {
+            let settingObj = {
+                types: document.getElementById('gen-types').value,
+                startTime: document.getElementById('gen-start-time').value,
+                endTime: document.getElementById('gen-end-time').value,
+                stations: genStations
+            };
+            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settingObj, null, 2));
+            let d = document.createElement('a');
+            d.setAttribute("href", dataStr);
+            d.setAttribute("download", "autogen_settings.json");
+            d.click();
+        }
+
+        function loadGenSettings(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let obj = JSON.parse(e.target.result);
+                    document.getElementById('gen-types').value = obj.types || "";
+                    document.getElementById('gen-start-time').value = obj.startTime || "06:00";
+                    document.getElementById('gen-end-time').value = obj.endTime || "23:00";
+                    genStations = obj.stations || genStations;
+                    initGenStations();
+                    alert("設定を読み込みました！");
+                } catch(err) { alert("読込失敗"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function executeAutoGenerate() {
+            let newStations = genStations.map((gs, i) => {
+                let timeStr = i === 0 ? "06:00" : "06:" + (i * 5 < 10 ? "0" + i * 5 : i * 5);
+                return {
+                    name: gs.name,
+                    arr: i === 0 ? "" : timeStr,
+                    dep: i === genStations.length - 1 ? "" : timeStr,
+                    handle: "停車",
+                    track: gs.track
+                };
+            });
+
+            trainsData.push({
+                num: "自動01",
+                stations: newStations
+            });
+
+            render();
+            toggleAutoGenScreen();
+            alert("ダイヤ自動作成を実行し、スタフに反映しました！");
+        }
+
+        function recordHistory(action) {
             let now = new Date().toLocaleString();
-            let historyText = `[${now}] IP: <b>${clientIp}</b> | 担当: ${currentLoggedInUser || '未ログイン'} | 操作: ${actionType}<br><span style="font-size:9px; color:#666;">端末: ${clientDevice}</span>`;
-            staffHistory.unshift(historyText);
-            if (staffHistory.length > 30) staffHistory.pop();
+            staffHistory.unshift(`[${now}] ${currentLoggedInUser} - ${action}`);
+            if (staffHistory.length > 20) staffHistory.pop();
             localStorage.setItem('staffHistory', JSON.stringify(staffHistory));
         }
 
         function renderAdminData() {
-            document.getElementById('ip-info-box').innerHTML = `
-                特定されたアクセスIPアドレス: <b>${clientIp}</b><br>
-                利用端末情報: <span style="font-size:10px; color:#444;">${clientDevice}</span>
-            `;
-
-            let pwdContainer = document.getElementById('password-list-container');
-            pwdContainer.innerHTML = '';
-            allowedPasswords.forEach((item, idx) => {
-                pwdContainer.innerHTML += `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px; align-items: center; background: #f9f9f9; padding: 3px 6px; border: 1px solid #ddd;">
-                        <span style="font-size: 11px;"><b>[${item.name}]</b> パスワード: ${item.pass}</span>
-                        <button onclick="removePassword(${idx})" style="background: #ff6666; color:white; border:none; padding:1px 4px; font-size:10px;">削除</button>
-                    </div>
-                `;
-            });
-
-            let histContainer = document.getElementById('staff-history-container');
-            if (staffHistory.length === 0) {
-                histContainer.innerHTML = '履歴はありません';
-            } else {
-                histContainer.innerHTML = staffHistory.map(h => `<div style="border-bottom:1px solid #eee; padding:4px 0;">${h}</div>`).join('');
-            }
+            document.getElementById('ip-info-box').innerHTML = `IP: <b>${clientIp}</b>`;
+            let c = document.getElementById('password-list-container');
+            c.innerHTML = allowedPasswords.map((item, idx) => `<div>[${item.name}] パス: ${item.pass}</div>`).join('');
+            document.getElementById('staff-history-container').innerHTML = staffHistory.join('<br>') || '履歴なし';
         }
 
         function addPassword() {
-            let nameVal = document.getElementById('new-name-input').value.trim();
-            let passVal = document.getElementById('new-pass-input').value.trim();
-
-            if (!nameVal || !passVal) {
-                alert("社員名と6桁のパスワードを入力してください。");
-                return;
-            }
-
-            allowedPasswords.push({ name: nameVal, pass: passVal });
-            localStorage.setItem('allowedPasswords', JSON.stringify(allowedPasswords));
-            
-            document.getElementById('new-name-input').value = '';
-            document.getElementById('new-pass-input').value = '';
-            
-            renderAdminData();
-            alert("社員用パスワードを追加しました！");
-        }
-
-        function removePassword(idx) {
-            if (allowedPasswords.length <= 1) {
-                alert("最後のパスワードは削除できません。");
-                return;
-            }
-            allowedPasswords.splice(idx, 1);
+            let name = document.getElementById('new-name-input').value.trim();
+            let pass = document.getElementById('new-pass-input').value.trim();
+            if(!name || !pass) return;
+            allowedPasswords.push({name, pass});
             localStorage.setItem('allowedPasswords', JSON.stringify(allowedPasswords));
             renderAdminData();
         }
 
         function saveToFile() {
-            recordHistory("すべてのスタフデータをファイルに保存");
             let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(trainsData, null, 2));
-            let downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "all_staff_data.json");
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            let d = document.createElement('a');
+            d.setAttribute("href", dataStr);
+            d.setAttribute("download", "all_staff_data.json");
+            d.click();
         }
 
         function loadFromFile(event) {
             let file = event.target.files[0];
             if (!file) return;
             let reader = new FileReader();
-            
-            if (file.name.endsWith('.oud')) {
-                reader.onload = function(e) {
-                    try {
-                        parseOudiaFile(e.target.result);
-                        render();
-                        recordHistory("Oudiaファイルからデータを読み込み");
-                        alert("Oudiaファイルを正常に読み込みました！");
-                    } catch(err) {
-                        alert("Oudiaファイルの解析に失敗しました。");
-                    }
-                };
-                reader.readAsText(file, 'Shift_JIS');
-            } else {
-                reader.onload = function(e) {
-                    try {
-                        trainsData = JSON.parse(e.target.result);
-                        render();
-                        recordHistory("ファイルからすべてのスタフデータを読み込み");
-                        alert("ファイルを正常に読み込みました！");
-                    } catch(err) {
-                        alert("ファイルの読み込みに失敗しました。");
-                    }
-                };
-                reader.readAsText(file);
-            }
+            reader.onload = function(e) {
+                try {
+                    trainsData = JSON.parse(e.target.result);
+                    render();
+                    alert("読み込み成功！");
+                } catch(err) { alert("読込失敗"); }
+            };
+            reader.readAsText(file);
         }
 
-        // 簡易Oudia(.oud)パーサー
-        function parseOudiaFile(text) {
-            let lines = text.split('\n');
-            let currentTrain = null;
-            let stationsList = [];
-            let inStationSection = false;
+        function updateTrainNum(tIndex, val) { trainsData[tIndex].num = val; localStorage.setItem('trainsData', JSON.stringify(trainsData)); updatePreview(); }
 
-            for (let line of lines) {
-                line = line.trim();
-                if (line.startsWith('[Ekijouhou]')) {
-                    // 駅情報セクションなど
-                }
-                if (line.startsWith('Ressha=')) {
-                    if (currentTrain) trainsData.push(currentTrain);
-                    currentTrain = { num: "列車", stations: [] };
-                }
-                if (line.startsWith('Ressyabangou=')) {
-                    if (currentTrain) currentTrain.num = line.split('=')[1].replace(/"/g, '');
-                }
-            }
-            if (currentTrain && currentTrain.stations.length > 0) {
-                trainsData.push(currentTrain);
-            }
-            if (trainsData.length === 0) {
-                // 万が一抽出できなかった場合のフォールバック
-                trainsData.push({ num: "Oudia読込", stations: [{ name: "駅A", arr: "", dep: "1000", handle: "停車", track: "1" }] });
-            }
-        }
-
-        function updateTrainNum(tIndex, value) {
-            trainsData[tIndex].num = value;
-            localStorage.setItem('trainsData', JSON.stringify(trainsData));
-            updatePreview();
-        }
-
-        function updateData(tIndex, sIndex, field, value) {
+        function updateData(tIndex, sIndex, field, val) {
             let st = trainsData[tIndex].stations[sIndex];
-            st[field] = value;
-
-            // 「通過」と入力されたら到着・出発を自動的に「レ」にする
-            if (field === 'handle' && value === '通過') {
-                st.arr = 'レ';
-                st.dep = 'レ';
-                // 対応する入力欄のDOMも直接書き換える
-                let arrInput = document.getElementById(`arr_${tIndex}_${sIndex}`);
-                let depInput = document.getElementById(`dep_${tIndex}_${sIndex}`);
-                if (arrInput) arrInput.value = 'レ';
-                if (depInput) depInput.value = 'レ';
+            st[field] = val;
+            if (field === 'handle' && val === '通過') {
+                st.arr = 'レ'; st.dep = 'レ';
+                let a = document.getElementById(`arr_${tIndex}_${sIndex}`);
+                let dp = document.getElementById(`dep_${tIndex}_${sIndex}`);
+                if(a) a.value = 'レ'; if(dp) dp.value = 'レ';
             }
-
             localStorage.setItem('trainsData', JSON.stringify(trainsData));
             updatePreview();
         }
@@ -471,129 +480,61 @@
         function updatePreview() {
             const previewContainer = document.getElementById('staff-preview-container');
             previewContainer.innerHTML = '';
-
             trainsData.forEach((train) => {
-                let cardDiv = document.createElement('div');
-                cardDiv.className = 'staff-card';
-                
-                let tableRowsHtml = '';
-                train.stations.forEach(st => {
-                    tableRowsHtml += `
-                        <tr>
-                            <td>${st.name}</td>
-                            <td>${st.arr !== "" ? st.arr : '-'}</td>
-                            <td>${st.dep !== "" ? st.dep : '-'}</td>
-                            <td>${st.handle}</td>
-                            <td>${st.track}</td>
-                        </tr>
-                    `;
-                });
-
-                cardDiv.innerHTML = `
-                    <table class="staff-header">
-                        <tr>
-                            <td colspan="2" style="text-align:center; font-weight:bold;">${train.num}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="height: 15px;"></td>
-                        </tr>
-                    </table>
-                    <table class="staff-table">
-                        <tr>
-                            <th>駅名</th>
-                            <th>到着</th>
-                            <th>出発</th>
-                            <th>扱い</th>
-                            <th>番線</th>
-                        </tr>
-                        ${tableRowsHtml}
-                    </table>
+                let rows = train.stations.map(st => `
+                    <tr>
+                        <td>${st.name}</td>
+                        <td>${st.arr || '-'}</td>
+                        <td>${st.dep || '-'}</td>
+                        <td>${st.handle}</td>
+                        <td>${st.track}</td>
+                    </tr>
+                `).join('');
+                previewContainer.innerHTML += `
+                    <div class="staff-card">
+                        <table class="staff-header"><tr><td style="font-weight:bold;">${train.num}</td></tr></table>
+                        <table class="staff-table"><tr><th>駅名</th><th>到着</th><th>出発</th><th>扱い</th><th>番線</th></tr>${rows}</table>
+                    </div>
                 `;
-                previewContainer.appendChild(cardDiv);
             });
         }
 
         function render() {
             localStorage.setItem('trainsData', JSON.stringify(trainsData));
-
-            const inputContainer = document.getElementById('trains-input-container');
-            inputContainer.innerHTML = '';
-
+            let container = document.getElementById('trains-input-container');
+            container.innerHTML = '';
             trainsData.forEach((train, tIndex) => {
-                let trainDiv = document.createElement('div');
-                trainDiv.className = 'train-form';
-                
-                let stationsHtml = '';
-                train.stations.forEach((st, sIndex) => {
-                    stationsHtml += `
-                        <div class="station-row">
-                            <input type="text" class="name" placeholder="駅名" value="${st.name}" oninput="updateData(${tIndex}, ${sIndex}, 'name', this.value)">
-                            <input type="text" id="arr_${tIndex}_${sIndex}" class="time" placeholder="着" value="${st.arr}" oninput="updateData(${tIndex}, ${sIndex}, 'arr', this.value)">
-                            <input type="text" id="dep_${tIndex}_${sIndex}" class="time" placeholder="発" value="${st.dep}" oninput="updateData(${tIndex}, ${sIndex}, 'dep', this.value)">
-                            <input type="text" class="hnd" placeholder="扱" value="${st.handle}" oninput="updateData(${tIndex}, ${sIndex}, 'handle', this.value)">
-                            <input type="text" class="trk" placeholder="番線" value="${st.track}" oninput="updateData(${tIndex}, ${sIndex}, 'track', this.value)">
-                            <button onclick="removeStation(${tIndex}, ${sIndex})" style="background:#ff9999; border:none; padding:2px 4px; font-size:10px;">✕</button>
-                        </div>
-                    `;
-                });
-
-                trainDiv.innerHTML = `
-                    <h4>列車 ${tIndex + 1}</h4>
-                    <div style="margin-bottom: 5px; font-size:12px;">
-                        列車番号: <input type="text" value="${train.num}" style="width:120px;" oninput="updateTrainNum(${tIndex}, this.value)">
+                let stHtml = train.stations.map((st, sIndex) => `
+                    <div class="station-row">
+                        <input type="text" class="name" placeholder="駅名" value="${st.name}" oninput="updateData(${tIndex}, ${sIndex}, 'name', this.value)">
+                        <input type="text" id="arr_${tIndex}_${sIndex}" class="time" placeholder="着" value="${st.arr}" oninput="updateData(${tIndex}, ${sIndex}, 'arr', this.value)">
+                        <input type="text" id="dep_${tIndex}_${sIndex}" class="time" placeholder="発" value="${st.dep}" oninput="updateData(${tIndex}, ${sIndex}, 'dep', this.value)">
+                        <input type="text" class="hnd" placeholder="扱" value="${st.handle}" oninput="updateData(${tIndex}, ${sIndex}, 'handle', this.value)">
+                        <input type="text" class="trk" placeholder="番線" value="${st.track}" oninput="updateData(${tIndex}, ${sIndex}, 'track', this.value)">
+                        <button onclick="removeStation(${tIndex}, ${sIndex})" style="background:#ff9999; border:none; padding:2px 4px; font-size:10px;">✕</button>
                     </div>
-                    <div style="font-size:12px; font-weight:bold; margin-top:5px;">駅・時刻 (無限追加可能):</div>
-                    ${stationsHtml}
-                    <button onclick="addStation(${tIndex})" style="margin-top:5px; background:#ddd; font-size:11px;">＋ 駅を追加</button>
-                    <button onclick="duplicateTrain(${tIndex})" style="margin-top:5px; background:#2196F3; color:white; font-size:11px; margin-left:3px;">📋 列車を複製</button>
-                    <button onclick="removeTrain(${tIndex})" style="margin-top:5px; background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
-                    <div style="clear:both;"></div>
-                `;
-                inputContainer.appendChild(trainDiv);
-            });
+                `).join('');
 
+                container.innerHTML += `
+                    <div class="train-form">
+                        <h4>列車 ${tIndex + 1}</h4>
+                        <div style="margin-bottom: 5px; font-size:12px;">列車番号: <input type="text" value="${train.num}" style="width:120px;" oninput="updateTrainNum(${tIndex}, this.value)"></div>
+                        ${stHtml}
+                        <button onclick="addStation(${tIndex})" style="background:#ddd; font-size:11px;">＋ 駅を追加</button>
+                        <button onclick="removeTrain(${tIndex})" style="background:#ff6666; color:white; float:right; font-size:11px;">列車を削除</button>
+                        <div style="clear:both;"></div>
+                    </div>
+                `;
+            });
             updatePreview();
         }
 
-        function addTrain() {
-            trainsData.push({
-                num: "",
-                stations: []
-            });
-            recordHistory("列車を追加");
-            render();
-        }
-
-        function duplicateTrain(tIndex) {
-            let targetTrain = trainsData[tIndex];
-            let clonedTrain = JSON.parse(JSON.stringify(targetTrain));
-            clonedTrain.num = clonedTrain.num + "_2";
-
-            trainsData.splice(tIndex + 1, 0, clonedTrain);
-            recordHistory(`列車を複製 (${clonedTrain.num})`);
-            render();
-        }
-
-        function removeTrain(tIndex) {
-            trainsData.splice(tIndex, 1);
-            recordHistory("列車を削除");
-            render();
-        }
-
-        function addStation(tIndex) {
-            trainsData[tIndex].stations.push({ name: "", arr: "", dep: "", handle: "", track: "" });
-            recordHistory("駅を追加");
-            render();
-        }
-
-        function removeStation(tIndex, sIndex) {
-            trainsData[tIndex].stations.splice(sIndex, 1);
-            recordHistory("駅を削除");
-            render();
-        }
+        function addTrain() { trainsData.push({num: "", stations: []}); render(); }
+        function removeTrain(i) { trainsData.splice(i, 1); render(); }
+        function addStation(t) { trainsData[t].stations.push({name:"", arr:"", dep:"", handle:"", track:""}); render(); }
+        function removeStation(t, s) { trainsData[t].stations.splice(s, 1); render(); }
 
         render();
     </script>
-
 </body>
 </html>
