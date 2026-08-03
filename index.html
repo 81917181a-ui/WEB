@@ -147,7 +147,6 @@
             box-shadow: 3px 3px 5px rgba(0,0,0,0.2);
             margin-bottom: 20px;
         }
-        /* 区間カードのスタイル */
         .gen-section-card {
             background: #fff;
             border: 1px solid #999;
@@ -203,18 +202,24 @@
     <!-- ダイヤ自動作成画面 -->
     <div id="autogen-screen">
         <h3>ダイヤ自動作成・路線設定</h3>
-        <p style="font-size:12px; color:#666;">必要な情報を入力・設定してダイヤを自動作成します。</p>
+        <p style="font-size:12px; color:#666;">条件を設定し、Web計算によるダイヤ作成を実行できます（最大50駅対応）。</p>
 
         <div style="background:#fafafa; padding:10px; border:1px solid #ccc; margin-bottom:15px;">
-            <h4 style="margin:0 0 5px 0;">基本運行条件</h4>
-            <label style="font-size:12px;">種別一覧 (逆順: 普通〜特急等):</label><br>
-            <textarea id="gen-types" style="width:100%; height:40px; font-family:monospace;" placeholder="普通, 快速, 急行, 特急">普通, 快速, 急行, 特急</textarea><br>
+            <h4 style="margin:0 0 5px 0;">基本運行条件・編成・退避</h4>
+            <label style="font-size:12px;">種別一覧 (普通, 快速, 特急など):</label><br>
+            <textarea id="gen-types" style="width:100%; height:35px; font-family:monospace;">普通, 快速, 特急</textarea><br>
             
-            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
-                <div><label style="font-size:12px;">開始時刻:</label><br><input type="text" id="gen-start-time" value="06:00" style="width:90px;"></div>
-                <div><label style="font-size:12px;">終了時刻:</label><br><input type="text" id="gen-end-time" value="23:00" style="width:90px;"></div>
-                <div><label style="font-size:12px;">始発駅(任意):</label><br><input type="text" id="gen-start-station" placeholder="例: A駅" style="width:110px;"></div>
-                <div><label style="font-size:12px;">終了駅(任意):</label><br><input type="text" id="gen-end-station" placeholder="例: Z駅" style="width:110px;"></div>
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                <div><label style="font-size:12px;">開始時刻:</label><br><input type="text" id="gen-start-time" value="06:00" style="width:80px;"></div>
+                <div><label style="font-size:12px;">終了時刻:</label><br><input type="text" id="gen-end-time" value="23:00" style="width:80px;"></div>
+                <div><label style="font-size:12px;">作成編成数:</label><br><input type="number" id="gen-train-count" value="3" min="1" max="50" style="width:70px;"></div>
+                <div>
+                    <label style="font-size:12px;">退避設定:</label><br>
+                    <select id="gen-overtaking" style="padding:3px;">
+                        <option value="none">退避なし</option>
+                        <option value="auto">主要駅で自動退避 (運転停車)</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -234,9 +239,9 @@
             </label>
         </div>
 
-        <div style="display:flex; gap:10px;">
-            <button onclick="executeAutoGenerate()" style="background:#2196F3; color:white; padding:8px 15px;">🚀 ダイヤ自動作成を実行してスタフに反映</button>
-            <button onclick="toggleAutoGenScreen()" style="background: #ccc; padding: 8px 15px;">スタフ編集画面に戻る</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button onclick="executeAutoGenerate()" style="background:#2196F3; color:white; padding:10px 20px; font-size:14px;">🧮 ダイヤ作成（Web計算実行）</button>
+            <button onclick="toggleAutoGenScreen()" style="background: #ccc; padding: 10px 15px;">スタフ編集画面に戻る</button>
         </div>
     </div>
 
@@ -292,7 +297,6 @@
         let trainsData = JSON.parse(localStorage.getItem('trainsData')) || [];
 
         let clientIp = "取得中...";
-        let clientDevice = navigator.userAgent;
         let currentLoggedInUser = "";
         let isAutoGenView = false;
 
@@ -389,7 +393,11 @@
         }
 
         function addGenStationRow() {
-            genStations.push({ stationA: "B駅", faceA: "2", trackA: "2", sec: "60", stationB: "C駅", faceB: "2", trackB: "2", type: "複線" });
+            if (genStations.length >= 50) {
+                alert("最大50駅まで追加可能です。");
+                return;
+            }
+            genStations.push({ stationA: "駅", faceA: "2", trackA: "2", sec: "60", stationB: "駅", faceB: "2", trackB: "2", type: "複線" });
             initGenStations();
         }
         function removeGenStationRow() {
@@ -429,24 +437,58 @@
             reader.readAsText(file);
         }
 
+        // Web計算によるダイヤ自動作成関数
         function executeAutoGenerate() {
-            let stationsList = [];
-            genStations.forEach((gs, i) => {
-                if (i === 0) {
-                    stationsList.push({ name: gs.stationA, arr: "", dep: "06:00", handle: "停車", track: gs.trackA });
-                }
-                let timeStr = "06:" + ((i + 1) * 5 < 10 ? "0" + (i + 1) * 5 : (i + 1) * 5);
-                stationsList.push({ name: gs.stationB, arr: timeStr, dep: timeStr, handle: "停車", track: gs.trackB });
-            });
+            let trainCount = parseInt(document.getElementById('gen-train-count').value) || 1;
+            let overtaking = document.getElementById('gen-overtaking').value;
+            let startTimeStr = document.getElementById('gen-start-time').value || "06:00";
+            let typesList = document.getElementById('gen-types').value.split(',').map(s => s.trim()).filter(Boolean);
+            if (typesList.length === 0) typesList = ["普通"];
 
-            trainsData.push({
-                num: "自動01",
-                stations: stationsList
-            });
+            let [baseHour, baseMinute] = startTimeStr.split(':').map(Number);
+            let baseTotalMin = baseHour * 60 + baseMinute;
+
+            trainsData = []; // 新規生成
+
+            for (let t = 0; t < trainCount; t++) {
+                let stationsList = [];
+                let currentMin = baseTotalMin + (t * 12); // 12分間隔で発車
+                let trainType = typesList[t % typesList.length];
+
+                genStations.forEach((gs, i) => {
+                    let secNum = parseInt(gs.sec) || 60;
+                    let addMin = Math.ceil(secNum / 60);
+
+                    if (i === 0) {
+                        let h = Math.floor(currentMin / 60) % 24;
+                        let m = currentMin % 60;
+                        let depStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                        stationsList.push({ name: gs.stationA, arr: "", dep: depStr, handle: "停車", track: gs.trackA });
+                    }
+
+                    currentMin += addMin;
+                    let h = Math.floor(currentMin / 60) % 24;
+                    let m = currentMin % 60;
+                    let timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+                    let handleVal = "停車";
+                    if (overtaking === "auto" && i > 0 && i < genStations.length - 1 && i % 2 === 1 && t % 2 === 1) {
+                        handleVal = "運転停車";
+                        currentMin += 2; // 運転停車で2分プラス
+                    }
+
+                    stationsList.push({ name: gs.stationB, arr: timeStr, dep: timeStr, handle: handleVal, track: gs.trackB });
+                });
+
+                trainsData.push({
+                    num: `${trainType.charAt(0)}${101 + t}`,
+                    stations: stationsList
+                });
+            }
 
             render();
             toggleAutoGenScreen();
-            alert("ダイヤ自動作成を実行し、スタフに反映しました！");
+            alert(`Web計算完了！ ${trainCount}本分のダイヤを自動作成しました。`);
         }
 
         function recordHistory(action) {
