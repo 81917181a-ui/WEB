@@ -205,14 +205,16 @@
         <p style="font-size:12px; color:#666;">条件を設定し、Web計算によるダイヤ作成を実行できます（最大50駅対応）。</p>
 
         <div style="background:#fafafa; padding:10px; border:1px solid #ccc; margin-bottom:15px;">
-            <h4 style="margin:0 0 5px 0;">基本運行条件・編成・退避</h4>
+            <h4 style="margin:0 0 5px 0;">基本運行条件・編成・退避・時間設定 (秒)</h4>
             <label style="font-size:12px;">種別一覧 (普通, 快速, 特急など):</label><br>
             <textarea id="gen-types" style="width:100%; height:35px; font-family:monospace;">普通, 快速, 特急</textarea><br>
             
             <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:center;">
-                <div><label style="font-size:12px;">開始時刻:</label><br><input type="text" id="gen-start-time" value="06:00" style="width:80px;"></div>
-                <div><label style="font-size:12px;">終了時刻:</label><br><input type="text" id="gen-end-time" value="23:00" style="width:80px;"></div>
-                <div><label style="font-size:12px;">作成編成数:</label><br><input type="number" id="gen-train-count" value="3" min="1" max="50" style="width:70px;"></div>
+                <div><label style="font-size:12px;">開始時刻:</label><br><input type="text" id="gen-start-time" value="06:00" style="width:70px;"></div>
+                <div><label style="font-size:12px;">終了時刻:</label><br><input type="text" id="gen-end-time" value="23:00" style="width:70px;"></div>
+                <div><label style="font-size:12px;">作成編成数:</label><br><input type="number" id="gen-train-count" value="3" min="1" max="50" style="width:60px;"></div>
+                <div><label style="font-size:12px;">通常停車時間(秒):</label><br><input type="number" id="gen-stop-sec" value="30" style="width:60px;"></div>
+                <div><label style="font-size:12px;">折り返し時間(秒):</label><br><input type="number" id="gen-turn-sec" value="120" style="width:60px;"></div>
                 <div>
                     <label style="font-size:12px;">退避設定:</label><br>
                     <select id="gen-overtaking" style="padding:3px;">
@@ -360,7 +362,7 @@
         }
 
         let genStations = JSON.parse(localStorage.getItem('genStations')) || [
-            { stationA: "A駅", faceA: "2", trackA: "2", sec: "60", stationB: "B駅", faceB: "2", trackB: "2", type: "複線" }
+            { stationA: "A駅", faceA: "2", trackA: "2", sec: "60", stationB: "B駅", faceB: "2", trackB: "2", type: "複線", stopType: "普通" }
         ];
 
         function initGenStations() {
@@ -376,16 +378,21 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:5px; margin-bottom:6px; flex-wrap:wrap;">
                             <div><input type="text" value="${s.faceA}" oninput="genStations[${idx}].faceA=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackA}" oninput="genStations[${idx}].trackA=this.value" style="width:25px; text-align:center;">線</div>
-                            <span style="font-weight:bold;">[<input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒]</span>
+                            <span style="font-weight:bold;">[所要 <input type="text" value="${s.sec}" oninput="genStations[${idx}].sec=this.value" style="width:35px; text-align:center;">秒]</span>
                             <div><input type="text" value="${s.faceB}" oninput="genStations[${idx}].faceB=this.value" style="width:25px; text-align:center;">面<input type="text" value="${s.trackB}" oninput="genStations[${idx}].trackB=this.value" style="width:25px; text-align:center;">線</div>
                         </div>
-                        <div>
-                            線路形態: 
-                            <select oninput="genStations[${idx}].type=this.value">
-                                <option ${s.type==='単線'?'selected':''}>単線</option>
-                                <option ${s.type==='複線'?'selected':''}>複線</option>
-                                <option ${s.type==='複々線'?'selected':''}>複々線</option>
-                            </select>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <div>
+                                線路形態: 
+                                <select oninput="genStations[${idx}].type=this.value">
+                                    <option ${s.type==='単線'?'selected':''}>単線</option>
+                                    <option ${s.type==='複線'?'selected':''}>複線</option>
+                                    <option ${s.type==='複々線'?'selected':''}>複々線</option>
+                                </select>
+                            </div>
+                            <div>
+                                停車種別制限: <input type="text" value="${s.stopType || '普通'}" oninput="genStations[${idx}].stopType=this.value" style="width:90px;" placeholder="普通, 快速 など">
+                            </div>
                         </div>
                     </div>
                 `;
@@ -397,7 +404,7 @@
                 alert("最大50駅まで追加可能です。");
                 return;
             }
-            genStations.push({ stationA: "駅", faceA: "2", trackA: "2", sec: "60", stationB: "駅", faceB: "2", trackB: "2", type: "複線" });
+            genStations.push({ stationA: "駅", faceA: "2", trackA: "2", sec: "60", stationB: "駅", faceB: "2", trackB: "2", type: "複線", stopType: "普通" });
             initGenStations();
         }
         function removeGenStationRow() {
@@ -410,6 +417,8 @@
                 types: document.getElementById('gen-types').value,
                 startTime: document.getElementById('gen-start-time').value,
                 endTime: document.getElementById('gen-end-time').value,
+                stopSec: document.getElementById('gen-stop-sec').value,
+                turnSec: document.getElementById('gen-turn-sec').value,
                 stations: genStations
             };
             let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settingObj, null, 2));
@@ -429,6 +438,8 @@
                     document.getElementById('gen-types').value = obj.types || "";
                     document.getElementById('gen-start-time').value = obj.startTime || "06:00";
                     document.getElementById('gen-end-time').value = obj.endTime || "23:00";
+                    document.getElementById('gen-stop-sec').value = obj.stopSec || "30";
+                    document.getElementById('gen-turn-sec').value = obj.turnSec || "120";
                     genStations = obj.stations || genStations;
                     initGenStations();
                     alert("設定を読み込みました！");
@@ -437,58 +448,101 @@
             reader.readAsText(file);
         }
 
-        // Web計算によるダイヤ自動作成関数
+        // Web計算によるダイヤ自動作成関数（折り返し・同一番号・制限対応）
         function executeAutoGenerate() {
             let trainCount = parseInt(document.getElementById('gen-train-count').value) || 1;
             let overtaking = document.getElementById('gen-overtaking').value;
             let startTimeStr = document.getElementById('gen-start-time').value || "06:00";
+            let endTimeStr = document.getElementById('gen-end-time').value || "23:00";
+            let stopSec = parseInt(document.getElementById('gen-stop-sec').value) || 30;
+            let turnSec = parseInt(document.getElementById('gen-turn-sec').value) || 120;
+
             let typesList = document.getElementById('gen-types').value.split(',').map(s => s.trim()).filter(Boolean);
             if (typesList.length === 0) typesList = ["普通"];
 
-            let [baseHour, baseMinute] = startTimeStr.split(':').map(Number);
-            let baseTotalMin = baseHour * 60 + baseMinute;
+            let [startH, startM] = startTimeStr.split(':').map(Number);
+            let [endH, endM] = endTimeStr.split(':').map(Number);
+            let startTotalMin = startH * 60 + startM;
+            let endTotalMin = endH * 60 + endM;
 
-            trainsData = []; // 新規生成
+            trainsData = [];
 
+            // 各編成ごとの運行ループ（折り返し続けながら終了時間近くまで走る）
             for (let t = 0; t < trainCount; t++) {
-                let stationsList = [];
-                let currentMin = baseTotalMin + (t * 12); // 12分間隔で発車
-                let trainType = typesList[t % typesList.length];
+                let currentMin = startTotalMin + (t * 8); // 編成ごとに時間を少しずらして出庫
+                // 同一編成は同じ列車番号を維持（例: 101, 102...）
+                let assignedType = typesList[t % typesList.length];
+                let trainNum = `${assignedType.charAt(0)}${101 + t}`;
+                
+                let isDirectionForward = true; // true:往路(0->N), false:復路(N->0)
 
-                genStations.forEach((gs, i) => {
-                    let secNum = parseInt(gs.sec) || 60;
-                    let addMin = Math.ceil(secNum / 60);
+                while (true) {
+                    let stationsList = [];
+                    let activeStations = isDirectionForward ? [...genStations] : [...genStations].reverse();
+                    let segmentCount = activeStations.length;
 
-                    if (i === 0) {
-                        let h = Math.floor(currentMin / 60) % 24;
-                        let m = currentMin % 60;
-                        let depStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-                        stationsList.push({ name: gs.stationA, arr: "", dep: depStr, handle: "停車", track: gs.trackA });
-                    }
-
-                    currentMin += addMin;
+                    // 発車時刻
                     let h = Math.floor(currentMin / 60) % 24;
                     let m = currentMin % 60;
-                    let timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                    let depStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 
-                    let handleVal = "停車";
-                    if (overtaking === "auto" && i > 0 && i < genStations.length - 1 && i % 2 === 1 && t % 2 === 1) {
-                        handleVal = "運転停車";
-                        currentMin += 2; // 運転停車で2分プラス
+                    let firstStation = isDirectionForward ? activeStations[0].stationA : activeStations[0].stationB;
+                    let firstTrack = isDirectionForward ? activeStations[0].trackA : activeStations[0].trackB;
+                    stationsList.push({ name: firstStation, arr: "", dep: depStr, handle: "停車", track: firstTrack });
+
+                    // 途中駅・終着駅計算
+                    for (let i = 0; i < segmentCount; i++) {
+                        let gs = activeStations[i];
+                        let runSec = parseInt(gs.sec) || 60;
+                        let runMin = runSec / 60;
+                        currentMin += runMin;
+
+                        // 停車時間加算 (秒を分に換算して足す)
+                        currentMin += (stopSec / 60);
+
+                        let th = Math.floor(currentMin / 60) % 24;
+                        let tm = currentMin % 60;
+                        let timeStr = `${String(th).padStart(2,'0')}:${String(tm).padStart(2,'0')}`;
+
+                        let stName = isDirectionForward ? gs.stationB : gs.stationA;
+                        let stTrack = isDirectionForward ? gs.trackB : gs.trackA;
+
+                        // 停車種別制限の判定 (指定された種別以外は通過にする)
+                        let handleVal = "停車";
+                        let allowedStopTypes = (gs.stopType || "普通").split(',').map(s => s.trim());
+                        if (!allowedStopTypes.includes(assignedType) && i < segmentCount - 1) {
+                            handleVal = "通過";
+                            timeStr = "レ";
+                        }
+
+                        // 退避判定
+                        if (overtaking === "auto" && i > 0 && i < segmentCount - 1 && i % 2 === 1 && handleVal === "停車") {
+                            handleVal = "運転停車";
+                            currentMin += 2; // 運転停車で2分プラス
+                        }
+
+                        stationsList.push({ name: stName, arr: timeStr, dep: timeStr, handle: handleVal, track: stTrack });
                     }
 
-                    stationsList.push({ name: gs.stationB, arr: timeStr, dep: timeStr, handle: handleVal, track: gs.trackB });
-                });
+                    trainsData.push({
+                        num: trainNum,
+                        stations: stationsList
+                    });
 
-                trainsData.push({
-                    num: `${trainType.charAt(0)}${101 + t}`,
-                    stations: stationsList
-                });
+                    // 折り返し時間の追加
+                    currentMin += (turnSec / 60);
+                    isDirectionForward = !isDirectionForward;
+
+                    // 終了時間の10分前〜終了時間を過ぎたらこの編成の運行を終了
+                    if (currentMin >= endTotalMin - 10) {
+                        break;
+                    }
+                }
             }
 
             render();
             toggleAutoGenScreen();
-            alert(`Web計算完了！ ${trainCount}本分のダイヤを自動作成しました。`);
+            alert(`Web計算完了！ 終了時間 (${endTimeStr}) に向けて折り返し運用ダイヤを自動作成しました。`);
         }
 
         function recordHistory(action) {
