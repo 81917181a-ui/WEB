@@ -855,5 +855,24 @@
 
         render();
     </script>
+<script>
+        // --- 5〜15分おきに自分自身を叩いてスリープを防止する機能 ---
+        const PING_INTERVAL_MINUTES = 10; // 10分おき
+        const intervalMs = PING_INTERVAL_MINUTES * 60 * 1000;
+
+        function selfKeepAlive() {
+            // 現在のページのURL（例: https://xxx.onrender.com/）に対してフェッチを送る
+            fetch(window.location.href)
+                .then(res => {
+                    console.log(`[KeepAlive] Ping sent successfully: Status ${res.status}`);
+                })
+                .catch(err => {
+                    console.log(`[KeepAlive] Ping failed:`, err.message);
+                });
+        }
+
+        // ページが開かれている間、一定時間ごとに実行
+        setInterval(selfKeepAlive, intervalMs);
+    </script>
 </body>
 </html>
